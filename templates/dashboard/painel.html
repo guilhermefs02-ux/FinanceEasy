@@ -88,10 +88,10 @@
   {% endif %}
 </div>
 
-<!-- Categorias e colchão para imprevistos -->
+<!-- Categorias de despesas -->
 
 <div class="row g-3">
-  <div class="col-12 col-lg-7">
+  <div class="col-12">
     <div class="fe-card h-100">
       <p class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês</p>
       {% if top_categorias %}
@@ -111,30 +111,9 @@
       {% endif %}
     </div>
   </div>
-
-  <div class="col-12 col-lg-5">
-    <div class="fe-card h-100 d-flex flex-column justify-content-between">
-      <div>
-        <p class="fw-semibold mb-2"><i class="bi bi-umbrella me-1"></i>Colchão para imprevistos</p>
-        {% if colchao %}
-          <p class="small text-muted mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
-            {{ colchao.valor_acumulado|brl }} de {{ colchao.valor_alvo|brl }}
-          </p>
-          <div class="fe-progress mb-3">
-            <div class="fe-progress-bar" style="width: {{ colchao.percentual_concluido }}%;"></div>
-          </div>
-        {% else %}
-          <p class="small text-muted mb-3">Crie sua reserva de segurança para imprevistos e fique tranquilo(a).</p>
-        {% endif %}
-      </div>
-      <div>
-        <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary w-100 shadow-sm">Guardar um troco</a>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- NOVA SEÇÃO: MINHAS METAS -->
+<!-- Minhas metas -->
 
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -161,64 +140,62 @@
     </div>
   </div>
 
-{% if objetivos %}
-<div class="row g-3">
-{% for objetivo in objetivos %}
-<div class="col-12 col-md-6">
-<div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
-<div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-<div>
-<p class="fw-semibold mb-1">
-{% if objetivo.is_colchao_padrao %}
-<i class="bi bi-umbrella me-1"></i>
-{% else %}
-<i class="bi bi-bullseye me-1"></i>
-{% endif %}
-{{ objetivo.nome }}
-</p>
-{% if objetivo.is_colchao_padrao %}
-<span class="badge bg-success-subtle text-success">Reserva de segurança</span>
-{% endif %}
-</div>
-<span class="small fw-semibold text-nowrap">{{ objetivo.percentual_concluido }}%</span>
-</div>
+  {% if objetivos %}
+    <div class="row g-3">
+      {% for objetivo in objetivos %}
+        <div class="col-12 col-md-6">
+          <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <div>
+                <p class="fw-semibold mb-1">
+                  {% if objetivo.is_colchao_padrao %}
+                    <i class="bi bi-umbrella me-1"></i>
+                  {% else %}
+                    <i class="bi bi-bullseye me-1"></i>
+                  {% endif %}
+                  {{ objetivo.nome }}
+                </p>
+                {% if objetivo.is_colchao_padrao %}
+                  <span class="badge bg-success-subtle text-success">Reserva de segurança</span>
+                {% endif %}
+              </div>
+              <span class="small fw-semibold text-nowrap">{{ objetivo.percentual_concluido }}%</span>
+            </div>
 
-        <div class="mb-2">
-          <p class="mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-            <span class="fw-bold">{{ objetivo.valor_acumulado|brl }}</span>
-            <span class="small text-muted">de {{ objetivo.valor_alvo|brl }}</span>
-          </p>
-        </div>
+            <div class="mb-2">
+              <p class="mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+                <span class="fw-bold">{{ objetivo.valor_acumulado|brl }}</span>
+                <span class="small text-muted">de {{ objetivo.valor_alvo|brl }}</span>
+              </p>
+            </div>
 
-        <div class="fe-progress mb-2" role="progressbar" aria-label="Progresso de {{ objetivo.nome }}" aria-valuenow="{{ objetivo.percentual_concluido }}" aria-valuemin="0" aria-valuemax="100">
-          <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
-        </div>
+            <div class="fe-progress mb-2" role="progressbar" aria-label="Progresso de {{ objetivo.nome }}" aria-valuenow="{{ objetivo.percentual_concluido }}" aria-valuemin="0" aria-valuemax="100">
+              <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+            </div>
 
-        {% if objetivo.percentual_concluido >= 100 %}
-          <p class="small text-success mb-0"><i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!</p>
-        {% else %}
-          <p class="small text-muted mb-0">
-            {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
-              Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_alvo|floatformat:2|add:"0"|brl }}</span> para atingir a meta.
+            {% if objetivo.percentual_concluido >= 100 %}
+              <p class="small text-success mb-0"><i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!</p>
             {% else %}
-              Meta concluída!
+              <p class="small text-muted mb-0">
+                {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
+                  Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_restante|brl }}</span> para atingir a meta.
+                {% else %}
+                  Meta concluída!
+                {% endif %}
+              </p>
             {% endif %}
-          </p>
-        {% endif %}
-      </div>
+          </div>
+        </div>
+      {% endfor %}
     </div>
-  {% endfor %}
-</div>
-
-{% else %}
-<div class="text-center py-4">
-<i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
-<p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
-<p class="small text-muted mb-3">Crie sua primeira meta e acompanhe seu progresso por aqui.</p>
-<a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar minha primeira meta</a>
-</div>
-{% endif %}
-
+  {% else %}
+    <div class="text-center py-4">
+      <i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
+      <p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
+      <p class="small text-muted mb-3">Crie sua primeira meta e acompanhe seu progresso por aqui.</p>
+      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar minha primeira meta</a>
+    </div>
+  {% endif %}
 </div>
 
 <!-- Mercado agora -->
