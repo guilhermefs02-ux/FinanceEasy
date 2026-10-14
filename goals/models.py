@@ -20,10 +20,6 @@ class Goal(models.Model):
         default=False,
         help_text="Meta padrão 'Colchão para Imprevistos' criada no primeiro acesso",
     )
-    arquivado = models.BooleanField(
-        default=False,
-        help_text="Indica se o objetivo foi arquivado sem apagar seu histórico",
-    )
 
     criado_em = models.DateTimeField(auto_now_add=True)
     concluido_em = models.DateTimeField(null=True, blank=True)
