@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, Prefetch
+from django.db.models import Prefetch, Sum
 from django.shortcuts import redirect, render
 
 from goals.models import Goal, GoalContribution
@@ -125,14 +125,11 @@ maior_categoria_total = max(
 
 dados_hgbrasil = obter_dados_financeiros()
 
-# Colchão para imprevistos já utilizado no painel.
 colchao = Goal.objects.filter(
     usuario=request.user,
     is_colchao_padrao=True,
 ).first()
 
-# Todas as metas pertencentes ao usuário logado.
-# As contribuições são carregadas antecipadamente para reduzir consultas.
 objetivos = list(
     Goal.objects.filter(usuario=request.user)
     .prefetch_related(
@@ -144,13 +141,11 @@ objetivos = list(
     .order_by("-is_colchao_padrao", "criado_em")
 )
 
-# Soma do dinheiro efetivamente guardado em todas as metas.
 total_acumulado_objetivos = sum(
     (objetivo.valor_acumulado for objetivo in objetivos),
     start=Decimal("0"),
 )
 
-# Valor que falta para alcançar cada objetivo.
 for objetivo in objetivos:
     objetivo.valor_restante = max(
         objetivo.valor_alvo - objetivo.valor_acumulado,
