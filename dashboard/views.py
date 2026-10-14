@@ -2,10 +2,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch, Sum
+from django.db.models import Sum
 from django.shortcuts import redirect, render
 
-from goals.models import Goal, GoalContribution
+from goals.models import Goal
 from transactions.models import Transaction
 
 from .services.hgbrasil import obter_dados_financeiros
@@ -31,7 +31,10 @@ def _proximas_contas(user, dias_janela=7):
     itens = []
 
     for conta in user.recorrencias.filter(ativo=True):
-        vencimento = _proxima_data_vencimento(conta.dia_vencimento, hoje)
+        vencimento = _proxima_data_vencimento(
+            conta.dia_vencimento,
+            hoje,
+        )
 
         if hoje <= vencimento <= limite:
             itens.append(
@@ -45,7 +48,10 @@ def _proximas_contas(user, dias_janela=7):
             )
 
     for divida in user.dividas.filter(quitada=False):
-        vencimento = _proxima_data_vencimento(divida.dia_vencimento, hoje)
+        vencimento = _proxima_data_vencimento(
+            divida.dia_vencimento,
+            hoje,
+        )
 
         if hoje <= vencimento <= limite:
             itens.append(
@@ -74,14 +80,16 @@ def painel(request):
     )
 
     total_receitas = (
-        transacoes_mes.filter(tipo=Transaction.Tipo.RECEITA)
-        .aggregate(t=Sum("valor"))["t"]
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.RECEITA,
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0")
     )
 
     total_despesas = (
-        transacoes_mes.filter(tipo=Transaction.Tipo.DESPESA)
-        .aggregate(t=Sum("valor"))["t"]
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.DESPESA,
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0")
     )
 
@@ -90,7 +98,7 @@ def painel(request):
             usuario=request.user,
             status=Transaction.Status.CONFIRMADA,
             tipo=Transaction.Tipo.RECEITA,
-        ).aggregate(t=Sum("valor"))["t"]
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0")
     )
 
@@ -99,7 +107,7 @@ def painel(request):
             usuario=request.user,
             status=Transaction.Status.CONFIRMADA,
             tipo=Transaction.Tipo.DESPESA,
-        ).aggregate(t=Sum("valor"))["t"]
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0")
     )
 
@@ -118,7 +126,9 @@ def painel(request):
     sobra_segura = saldo_disponivel - total_a_vencer_7_dias
 
     top_categorias = (
-        transacoes_mes.filter(tipo=Transaction.Tipo.DESPESA)
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.DESPESA,
+        )
         .values(
             "categoria__nome",
             "categoria__cor",
@@ -143,35 +153,23 @@ def painel(request):
     objetivos = list(
         Goal.objects.filter(
             usuario=request.user,
+        ).order_by(
+            "-is_colchao_padrao",
+            "criado_em",
         )
-        .prefetch_related(
-            Prefetch(
-                "contribuicoes",
-                queryset=GoalContribution.objects.only(
-                    "objetivo_id",
-                    "valor",
-                ),
-            )
-        )
-        .order_by("-is_colchao_padrao", "criado_em")
     )
 
     total_acumulado_objetivos = Decimal("0")
 
     for objetivo in objetivos:
-        contribuicoes = list(objetivo.contribuicoes.all())
-
-        objetivo.valor_acumulado = sum(
-            (contribuicao.valor for contribuicao in contribuicoes),
-            start=Decimal("0"),
-        )
+        acumulado = objetivo.valor_acumulado
 
         objetivo.valor_restante = max(
-            objetivo.valor_alvo - objetivo.valor_acumulado,
+            objetivo.valor_alvo - acumulado,
             Decimal("0"),
         )
 
-        total_acumulado_objetivos += objetivo.valor_acumulado
+        total_acumulado_objetivos += acumulado
 
     receitas_detalhes = Transaction.objects.filter(
         usuario=request.user,
