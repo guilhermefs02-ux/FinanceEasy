@@ -101,15 +101,29 @@ WSGI_APPLICATION = "financeeasy.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Usa PostgreSQL quando DATABASE_URL estiver configurada.
+# Sem essa variável, mantém SQLite para desenvolvimento local.
 
 _db_path = os.getenv("DJANGO_DB_PATH")
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": Path(_db_path) if _db_path else BASE_DIR / "db.sqlite3",
+_database_url = os.getenv("DATABASE_URL")
+
+if _database_url:
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.parse(
+            _database_url,
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": Path(_db_path) if _db_path else BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Usuário customizado (login por e-mail — RF02)
 AUTH_USER_MODEL = "accounts.User"
