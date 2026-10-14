@@ -51,6 +51,11 @@ def lista_objetivos(request):
             )
 
             return redirect("goals:lista")
+
+        messages.error(
+            request,
+            "Não foi possível criar o objetivo. Confira os dados informados.",
+        )
     else:
         form = GoalForm()
 
@@ -150,6 +155,8 @@ def guardar_troco(request, pk):
 
 @login_required
 def editar_colchao(request):
+    """Edita somente o valor-alvo da meta principal."""
+
     colchao, criado = Goal.objects.get_or_create(
         usuario=request.user,
         is_colchao_padrao=True,
@@ -168,8 +175,8 @@ def editar_colchao(request):
         if form.is_valid():
             objetivo = form.save(commit=False)
 
-            # O nome do colchão permanece fixo.
-            objetivo.nome = colchao.nome
+            # Mantém o nome da meta principal fixo.
+            objetivo.nome = "Colchão para Imprevistos"
             objetivo.save()
 
             messages.success(
@@ -178,6 +185,19 @@ def editar_colchao(request):
             )
 
             return redirect("goals:lista")
+
+        logger.warning(
+            "Falha na edição do Colchão para Imprevistos. "
+            "Erros do formulário: %s",
+            form.errors,
+        )
+
+        messages.error(
+            request,
+            "Não foi possível salvar. Confira o valor informado "
+            "e os erros exibidos no formulário.",
+        )
+
     else:
         form = GoalForm(instance=colchao)
 
@@ -195,6 +215,8 @@ def editar_colchao(request):
 
 @login_required
 def editar_objetivo(request, pk):
+    """Edita uma meta secundária pertencente ao usuário."""
+
     objetivo = get_object_or_404(
         Goal,
         pk=pk,
@@ -217,6 +239,13 @@ def editar_objetivo(request, pk):
             )
 
             return redirect("goals:lista")
+
+        messages.error(
+            request,
+            "Não foi possível atualizar o objetivo. "
+            "Confira os dados informados.",
+        )
+
     else:
         form = GoalForm(instance=objetivo)
 
@@ -235,6 +264,8 @@ def editar_objetivo(request, pk):
 @login_required
 @require_POST
 def excluir_objetivo(request, pk):
+    """Exclui uma meta secundária e suas contribuições."""
+
     objetivo = get_object_or_404(
         Goal,
         pk=pk,
@@ -243,7 +274,6 @@ def excluir_objetivo(request, pk):
     )
 
     nome = objetivo.nome
-
     objetivo.delete()
 
     messages.success(
