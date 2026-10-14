@@ -1,4 +1,3 @@
-```python
 import logging
 from decimal import Decimal
 
@@ -90,10 +89,10 @@ def guardar_troco(request, pk):
 
                 valor = form.cleaned_data["valor"]
 
-            if valor <= 0:
+            if not valor.is_finite() or valor <= 0:
                 messages.error(
                     request,
-                    "O valor da contribuição deve ser maior que zero.",
+                    "Informe um valor válido maior que zero.",
                 )
                 return redirect("goals:lista")
 
@@ -131,4 +130,3 @@ def guardar_troco(request, pk):
             raise
 
     return redirect("goals:lista")
-```
