@@ -21,6 +21,8 @@ ATALHOS_MICROVALORES = [
 
 @login_required
 def lista_objetivos(request):
+    """UC12 — Estabelecer Reserva de Segurança com Microvalores."""
+
     colchao, criado = Goal.objects.get_or_create(
         usuario=request.user,
         is_colchao_padrao=True,
@@ -33,7 +35,6 @@ def lista_objetivos(request):
     outros_objetivos = Goal.objects.filter(
         usuario=request.user,
         is_colchao_padrao=False,
-        arquivado=False,
     )
 
     if request.method == "POST":
@@ -48,6 +49,7 @@ def lista_objetivos(request):
                 request,
                 f'Objetivo "{objetivo.nome}" criado!',
             )
+
             return redirect("goals:lista")
     else:
         form = GoalForm()
@@ -70,7 +72,6 @@ def guardar_troco(request, pk):
         Goal,
         pk=pk,
         usuario=request.user,
-        arquivado=False,
     )
 
     if request.method == "POST":
@@ -91,11 +92,14 @@ def guardar_troco(request, pk):
                     pk,
                     valor_atalho,
                 )
+
                 messages.error(
                     request,
                     "Não foi possível interpretar o valor. Tente novamente.",
                 )
+
                 return redirect("goals:lista")
+
         else:
             form = ContribuicaoForm(request.POST)
 
@@ -104,6 +108,7 @@ def guardar_troco(request, pk):
                     request,
                     "Informe um valor válido para guardar.",
                 )
+
                 return redirect("goals:lista")
 
             valor = form.cleaned_data["valor"]
@@ -155,10 +160,15 @@ def editar_colchao(request):
     )
 
     if request.method == "POST":
-        form = GoalForm(request.POST, instance=colchao)
+        form = GoalForm(
+            request.POST,
+            instance=colchao,
+        )
 
         if form.is_valid():
             objetivo = form.save(commit=False)
+
+            # O nome do colchão permanece fixo.
             objetivo.nome = colchao.nome
             objetivo.save()
 
@@ -166,6 +176,7 @@ def editar_colchao(request):
                 request,
                 "Valor-alvo do Colchão para Imprevistos atualizado!",
             )
+
             return redirect("goals:lista")
     else:
         form = GoalForm(instance=colchao)
@@ -189,11 +200,13 @@ def editar_objetivo(request, pk):
         pk=pk,
         usuario=request.user,
         is_colchao_padrao=False,
-        arquivado=False,
     )
 
     if request.method == "POST":
-        form = GoalForm(request.POST, instance=objetivo)
+        form = GoalForm(
+            request.POST,
+            instance=objetivo,
+        )
 
         if form.is_valid():
             form.save()
@@ -202,6 +215,7 @@ def editar_objetivo(request, pk):
                 request,
                 f'Objetivo "{objetivo.nome}" atualizado!',
             )
+
             return redirect("goals:lista")
     else:
         form = GoalForm(instance=objetivo)
@@ -220,22 +234,21 @@ def editar_objetivo(request, pk):
 
 @login_required
 @require_POST
-def arquivar_objetivo(request, pk):
+def excluir_objetivo(request, pk):
     objetivo = get_object_or_404(
         Goal,
         pk=pk,
         usuario=request.user,
         is_colchao_padrao=False,
-        arquivado=False,
     )
 
-    objetivo.arquivado = True
-    objetivo.save(update_fields=["arquivado"])
+    nome = objetivo.nome
+
+    objetivo.delete()
 
     messages.success(
         request,
-        f'Objetivo "{objetivo.nome}" arquivado. '
-        "O histórico de contribuições foi preservado.",
+        f'Objetivo "{nome}" excluído com sucesso.',
     )
 
     return redirect("goals:lista")
