@@ -1,4 +1,3 @@
-```python
 from decimal import Decimal
 
 from django.conf import settings
@@ -21,7 +20,6 @@ class Goal(models.Model):
         default=False,
         help_text="Meta padrão 'Colchão para Imprevistos' criada no primeiro acesso",
     )
-
     arquivado = models.BooleanField(
         default=False,
         help_text="Indica se o objetivo foi arquivado sem apagar seu histórico",
@@ -74,4 +72,3 @@ class GoalContribution(models.Model):
 
     def __str__(self):
         return f"+R$ {self.valor} em {self.objetivo.nome}"
-```
