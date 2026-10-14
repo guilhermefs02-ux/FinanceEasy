@@ -1,102 +1,48 @@
-import logging
-from decimal import Decimal, InvalidOperation
+from django import forms
 
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
-
-from .forms import ContribuicaoForm, GoalForm
-from .models import Goal, GoalContribution
-
-logger = logging.getLogger(__name__)
-
-ATALHOS_MICROVALORES = [Decimal("5.00"), Decimal("10.00"), Decimal("20.00")]
+from .models import Goal
 
 
-@login_required
-def lista_objetivos(request):
-    """UC12 — Estabelecer Reserva de Segurança com Microvalores."""
-    colchao, criado = Goal.objects.get_or_create(
-        usuario=request.user,
-        is_colchao_padrao=True,
-        defaults={"nome": "Colchão para Imprevistos", "valor_alvo": Decimal("150.00")},
-    )
-    outros_objetivos = Goal.objects.filter(usuario=request.user, is_colchao_padrao=False)
+class GoalForm(forms.ModelForm):
+    class Meta:
+        model = Goal
+        fields = ["nome", "valor_alvo"]
+        widgets = {
+            "nome": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Ex.: Viagem, Trocar de celular",
+                }
+            ),
+            "valor_alvo": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": "0.01",
+                }
+            ),
+        }
 
-    if request.method == "POST":
-        form = GoalForm(request.POST)
-        if form.is_valid():
-            objetivo = form.save(commit=False)
-            objetivo.usuario = request.user
-            objetivo.save()
-            messages.success(request, f"Objetivo \"{objetivo.nome}\" criado!")
-            return redirect("goals:lista")
-    else:
-        form = GoalForm()
-
-    return render(
-        request,
-        "goals/lista.html",
-        {
-            "colchao": colchao,
-            "outros_objetivos": outros_objetivos,
-            "form": form,
-            "atalhos": ATALHOS_MICROVALORES,
-        },
-    )
-
-
-@login_required
-def guardar_troco(request, pk):
-    objetivo = get_object_or_404(Goal, pk=pk, usuario=request.user)
-
-    if request.method == "POST":
-        valor_atalho = request.POST.get("valor_atalho")
-
-        if valor_atalho:
-            try:
-                valor = Decimal(valor_atalho.strip().replace(",", "."))
-
-                if not valor.is_finite() or valor <= 0:
-                    raise InvalidOperation("Valor inválido")
-
-            except (InvalidOperation, ValueError, TypeError):
-                logger.warning(
-                    "Valor inválido recebido para o objetivo ID %s: %r",
-                    pk,
-                    valor_atalho,
-                )
-                messages.error(
-                    request,
-                    "Não foi possível interpretar o valor. Tente novamente.",
-                )
-                return redirect("goals:lista")
-        else:
-            form = ContribuicaoForm(request.POST)
-            if not form.is_valid():
-                messages.error(request, "Informe um valor válido para guardar.")
-                return redirect("goals:lista")
-            valor = form.cleaned_data["valor"]
-
-        try:
-            GoalContribution.objects.create(objetivo=objetivo, valor=valor)
-
-            if objetivo.percentual_concluido >= 100 and not objetivo.concluido_em:
-                objetivo.concluido_em = timezone.now()
-                objetivo.save()
-                messages.success(
-                    request,
-                    f"Você completou o objetivo \"{objetivo.nome}\"! Seu esforço aos poucos valeu a pena. 🎉",
-                )
-            else:
-                messages.success(request, f"+R$ {valor} guardado em \"{objetivo.nome}\". Cada trocado conta!")
-
-        except Exception:
-            logger.exception(
-                "Erro ao guardar contribuição do objetivo ID %s",
-                pk,
+    def clean_valor_alvo(self):
+        valor = self.cleaned_data["valor_alvo"]
+        if valor <= 0:
+            raise forms.ValidationError(
+                "O valor da meta precisa ser maior que zero."
             )
-            raise
+        return valor
 
-    return redirect("goals:lista")
+
+class ContribuicaoForm(forms.Form):
+    valor = forms.DecimalField(
+        min_value=0.01,
+        max_digits=8,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+                "min": "0.01",
+                "placeholder": "Outro valor",
+            }
+        ),
+    )
