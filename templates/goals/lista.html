@@ -1,32 +1,66 @@
 {% extends "base.html" %}
 {% load finance_extras %}
+
 {% block title %}Objetivos — FinanceEasy{% endblock %}
+
 {% block content %}
-<h1 class="h5 fw-bold mb-3"><i class="bi bi-piggy-bank text-primary me-1"></i>Reservas e objetivos</h1>
+<h1 class="h5 fw-bold mb-3">
+  <i class="bi bi-piggy-bank text-primary me-1"></i>
+  Reservas e objetivos
+</h1>
 
 <div class="fe-card mb-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
     <div>
-      <p class="fw-semibold mb-1"><i class="bi bi-umbrella me-1"></i>{{ colchao.nome }}</p>
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-umbrella me-1"></i>{{ colchao.nome }}
+      </p>
       <p class="small text-muted mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-        {{ colchao.valor_acumulado|brl }} de {{ colchao.valor_alvo|brl }} ({{ colchao.percentual_concluido }}%)
+        {{ colchao.valor_acumulado|brl }} de {{ colchao.valor_alvo|brl }}
+        ({{ colchao.percentual_concluido }}%)
       </p>
     </div>
-  </div>
-  <div class="fe-progress mb-3">
-    <div class="fe-progress-bar" style="width: {{ colchao.percentual_concluido }}%;"></div>
+
+    <a href="{% url 'goals:editar_colchao' %}"
+       class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>Editar meta
+    </a>
   </div>
 
-  <form method="post" action="{% url 'goals:guardar_troco' colchao.pk %}" class="d-flex flex-wrap gap-2 align-items-center">
+  <div class="fe-progress mb-3">
+    <div class="fe-progress-bar"
+         style="width: {{ colchao.percentual_concluido }}%;"></div>
+  </div>
+
+  <form method="post"
+        action="{% url 'goals:guardar_troco' colchao.pk %}"
+        class="d-flex flex-wrap gap-2 align-items-center">
     {% csrf_token %}
     {% for valor in atalhos %}
-      <button type="submit" name="valor_atalho" value="{{ valor }}" class="fe-quick-amount">+ R$ {{ valor|floatformat:0 }}</button>
+      <button type="submit"
+              name="valor_atalho"
+              value="{{ valor }}"
+              class="fe-quick-amount">
+        + R$ {{ valor|floatformat:0 }}
+      </button>
     {% endfor %}
   </form>
-  <form method="post" action="{% url 'goals:guardar_troco' colchao.pk %}" class="d-flex gap-2 mt-2">
+
+  <form method="post"
+        action="{% url 'goals:guardar_troco' colchao.pk %}"
+        class="d-flex flex-wrap gap-2 mt-2">
     {% csrf_token %}
-    <input type="number" step="0.01" min="0.01" name="valor" class="form-control form-control-sm" placeholder="Outro valor" style="max-width: 160px;">
-    <button type="submit" class="btn btn-sm fe-btn-primary">Guardar</button>
+    <input type="number"
+           step="0.01"
+           min="0.01"
+           name="valor"
+           class="form-control form-control-sm"
+           placeholder="Outro valor"
+           aria-label="Outro valor para guardar no colchão"
+           style="max-width: 180px;">
+    <button type="submit" class="btn btn-sm fe-btn-primary">
+      Guardar
+    </button>
   </form>
 </div>
 
@@ -38,18 +72,71 @@
   {% for objetivo in outros_objetivos %}
     <div class="col-12 col-md-6">
       <div class="fe-card h-100">
-        <p class="fw-semibold mb-1">{{ objetivo.nome }}</p>
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <p class="fw-semibold mb-1">{{ objetivo.nome }}</p>
+
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{% url 'goals:editar_objetivo' objetivo.pk %}"
+               class="btn btn-sm btn-outline-secondary"
+               aria-label="Editar {{ objetivo.nome }}"
+               title="Editar objetivo">
+              <i class="bi bi-pencil"></i>
+            </a>
+
+            <form method="post"
+                  action="{% url 'goals:arquivar_objetivo' objetivo.pk %}"
+                  onsubmit="return confirm('Deseja arquivar este objetivo? O histórico de contribuições será preservado.');">
+              {% csrf_token %}
+              <button type="submit"
+                      class="btn btn-sm btn-outline-danger"
+                      aria-label="Arquivar {{ objetivo.nome }}"
+                      title="Arquivar objetivo">
+                <i class="bi bi-archive"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+
         <p class="small text-muted mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
           {{ objetivo.valor_acumulado|brl }} de {{ objetivo.valor_alvo|brl }}
+          ({{ objetivo.percentual_concluido }}%)
         </p>
+
         <div class="fe-progress mb-3">
-          <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+          <div class="fe-progress-bar"
+               style="width: {{ objetivo.percentual_concluido }}%;"></div>
         </div>
-        <form method="post" action="{% url 'goals:guardar_troco' objetivo.pk %}" class="d-flex flex-wrap gap-2">
+
+        <form method="post"
+              action="{% url 'goals:guardar_troco' objetivo.pk %}"
+              class="d-flex flex-wrap gap-2 align-items-center">
           {% csrf_token %}
+
           {% for valor in atalhos %}
-            <button type="submit" name="valor_atalho" value="{{ valor }}" class="fe-quick-amount">+R$ {{ valor|floatformat:0 }}</button>
+            <button type="submit"
+                    name="valor_atalho"
+                    value="{{ valor }}"
+                    class="fe-quick-amount">
+              + R$ {{ valor|floatformat:0 }}
+            </button>
           {% endfor %}
+        </form>
+
+        <form method="post"
+              action="{% url 'goals:guardar_troco' objetivo.pk %}"
+              class="d-flex flex-wrap gap-2 mt-2">
+          {% csrf_token %}
+          <input type="number"
+                 step="0.01"
+                 min="0.01"
+                 name="valor"
+                 class="form-control form-control-sm"
+                 placeholder="Outro valor"
+                 aria-label="Outro valor para guardar em {{ objetivo.nome }}"
+                 style="max-width: 180px;">
+          <button type="submit" class="btn btn-sm fe-btn-primary">
+            Guardar
+          </button>
         </form>
       </div>
     </div>
@@ -57,7 +144,10 @@
     <div class="col-12">
       <div class="fe-empty-state">
         <i class="bi bi-flag" style="font-size: 2rem;"></i>
-        <p class="mb-0 mt-2">Crie um objetivo além do colchão de imprevistos (viagem, estudos, etc.).</p>
+        <p class="mb-0 mt-2">
+          Crie um objetivo além do colchão de imprevistos
+          (viagem, estudos, etc.).
+        </p>
       </div>
     </div>
   {% endfor %}
@@ -65,17 +155,29 @@
 
 <div class="fe-card">
   <p class="fw-semibold mb-3">Criar novo objetivo</p>
+
   <form method="post" novalidate>
     {% csrf_token %}
+
     <div class="row g-2">
       <div class="col-12 col-md-6">
         {{ form.nome }}
+        {% for erro in form.nome.errors %}
+          <div class="text-danger small">{{ erro }}</div>
+        {% endfor %}
       </div>
+
       <div class="col-8 col-md-4">
         {{ form.valor_alvo }}
+        {% for erro in form.valor_alvo.errors %}
+          <div class="text-danger small">{{ erro }}</div>
+        {% endfor %}
       </div>
+
       <div class="col-4 col-md-2">
-        <button type="submit" class="btn fe-btn-primary w-100">Criar</button>
+        <button type="submit" class="btn fe-btn-primary w-100">
+          Criar
+        </button>
       </div>
     </div>
   </form>
