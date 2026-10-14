@@ -104,6 +104,7 @@ WSGI_APPLICATION = "financeeasy.wsgi.application"
 # Usa PostgreSQL quando DATABASE_URL estiver configurada.
 # Sem essa variável, mantém SQLite para desenvolvimento local.
 
+
 _db_path = os.getenv("DJANGO_DB_PATH")
 _database_url = os.getenv("DATABASE_URL")
 
@@ -124,6 +125,7 @@ else:
             "NAME": Path(_db_path) if _db_path else BASE_DIR / "db.sqlite3",
         }
     }
+
 
 # Usuário customizado (login por e-mail — RF02)
 AUTH_USER_MODEL = "accounts.User"
