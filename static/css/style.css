@@ -1,0 +1,259 @@
+
+
+/* 
+   1. TEMA CLARO (Off-white + Magenta Escuro) */
+/* ==========================================================================
+   1. TEMA CLARO (Off-white + Magenta Escuro)
+   ========================================================================== */
+:root, [data-bs-theme="light"] {
+  --fe-primary: #8F008F;            
+  --fe-primary-dark: #660066;      
+  --fe-secondary: #D400D4;         
+  --fe-bg: #F9F8F6;                
+  --fe-surface: #FFFFFF;          
+  --fe-text: #1C191C;             
+  --fe-text-muted: #665E66;        
+  --fe-success: #1FAA59;
+  --fe-warning: #B8860B;
+  --fe-warning-bg: #FFF6E0;
+  --fe-danger: #D64550;
+  --fe-danger-bg: #FDEBEC;
+  --fe-border: #E8E4E8;
+  --fe-radius: 16px;
+  --fe-radius-sm: 10px;
+  --fe-shadow: 0 4px 20px rgba(143, 0, 143, 0.08);
+}
+
+/* ==========================================================================
+   2. TEMA ESCURO (Dark Purple/Preto + Dourado/Amarelo)
+   ========================================================================== */
+[data-bs-theme="dark"] {
+  --fe-primary: #FFD700;            
+  --fe-primary-dark: #E6C200;       
+  --fe-secondary: #FFDF00;         
+  --fe-bg: #0F0D13;                
+  --fe-surface: #1B1722;           
+  --fe-text: #FAF8FC;              
+  --fe-text-muted: #B0A8B8;       
+  --fe-success: #2ECC71;
+  --fe-warning: #FFD700;
+  --fe-warning-bg: #2C2614;
+  --fe-danger: #E74C3C;
+  --fe-danger-bg: #2C181A;
+  --fe-border: #2C2538;
+  --fe-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .fe-btn-primary {
+  color: #0F0D13 !important;
+  font-weight: 700;
+}
+
+/* 
+   3. ESTILOS BASE E ELEMENTOS */
+body {
+  background-color: var(--fe-bg);
+  color: var(--fe-text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding-bottom: 84px; /* espaço para a bottom-nav no mobile */
+  transition: background-color 0.25s ease, color 0.25s ease; /* Transição suave na troca de tema */
+}
+
+a { color: var(--fe-primary); text-decoration: none; }
+a:hover { color: var(--fe-primary-dark); }
+
+.navbar-fe {
+  background: linear-gradient(135deg, var(--fe-primary) 0%, #4834D4 100%);
+  color: #fff;
+  box-shadow: var(--fe-shadow);
+}
+.navbar-fe .navbar-brand { color: #fff; font-weight: 700; letter-spacing: 0.5px; }
+.navbar-fe .nav-link { color: rgba(255,255,255,0.92); }
+.navbar-fe .nav-link:hover, .navbar-fe .nav-link.active { color: #fff; font-weight: 600; }
+
+.fe-card {
+  background: var(--fe-surface);
+  border-radius: var(--fe-radius);
+  box-shadow: var(--fe-shadow);
+  border: 1px solid var(--fe-border);
+  padding: 1.25rem;
+}
+
+.fe-hero-saldo {
+  background: linear-gradient(135deg, var(--fe-primary) 0%, #4834D4 100%);
+  color: #fff;
+  border-radius: var(--fe-radius);
+  padding: 1.5rem;
+  box-shadow: var(--fe-shadow);
+}
+
+.fe-hero-saldo .fe-valor-grande {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.fe-sobra-segura {
+  background: linear-gradient(135deg, #00D9B5 0%, #00B39C 100%);
+  color: #06332C;
+  border-radius: var(--fe-radius);
+  padding: 1.5rem;
+  box-shadow: var(--fe-shadow);
+}
+
+.fe-sobra-segura.negativa {
+  background: linear-gradient(135deg, #FF9A8B 0%, #D64550 100%);
+  color: #fff;
+}
+
+.fe-alerta-amigavel {
+  background: var(--fe-warning-bg);
+  color: var(--fe-text);
+  border: 1px solid var(--fe-warning);
+  border-radius: var(--fe-radius-sm);
+  padding: 0.9rem 1.1rem;
+}
+
+.fe-badge-pronto {
+  background: rgba(31, 170, 89, 0.15);
+  color: var(--fe-success);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.fe-badge-revisar {
+  background: var(--fe-warning-bg);
+  color: var(--fe-warning);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.fe-chip-categoria {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--fe-primary);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.fe-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--fe-border);
+  overflow: hidden;
+}
+.fe-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--fe-secondary), var(--fe-primary));
+}
+
+.fe-btn-primary {
+  background: var(--fe-primary);
+  border-color: var(--fe-primary);
+  color: #fff;
+  border-radius: var(--fe-radius-sm);
+  font-weight: 600;
+}
+.fe-btn-primary:hover { background: var(--fe-primary-dark); border-color: var(--fe-primary-dark); color: #fff; }
+
+.fe-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 90px;
+  z-index: 1030;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--fe-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 8px 24px rgba(108, 92, 231, 0.45);
+}
+.fe-fab:hover { background: var(--fe-primary-dark); color: #fff; }
+
+/* Bottom navigation — mobile-first */
+.fe-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--fe-surface);
+  border-top: 1px solid var(--fe-border);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+  display: flex;
+  justify-content: space-around;
+  padding: 0.4rem 0;
+  z-index: 1020;
+}
+.fe-bottom-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--fe-text-muted);
+  gap: 2px;
+  padding: 0.3rem 0.6rem;
+}
+.fe-bottom-nav a.active, .fe-bottom-nav a:hover { color: var(--fe-primary); }
+.fe-bottom-nav i { font-size: 1.25rem; }
+
+@media (min-width: 992px) {
+  .fe-bottom-nav { display: none; }
+  body { padding-bottom: 0; }
+  .fe-fab { bottom: 2rem; }
+}
+
+/* Modo Privacidade — RNF13 */
+.fe-privado { filter: blur(7px); user-select: none; transition: filter 0.15s ease; }
+
+.fe-empty-state {
+  text-align: center;
+  color: var(--fe-text-muted);
+  padding: 2.5rem 1rem;
+}
+
+.fe-quick-amount {
+  border-radius: 999px;
+  border: 1px solid var(--fe-primary);
+  color: var(--fe-primary);
+  background: var(--fe-surface);
+  font-weight: 600;
+  padding: 0.4rem 1.1rem;
+}
+.fe-quick-amount:hover { background: var(--fe-primary); color: #fff; }
+
+/* Estilização para campos de formulário renderizados pelo Django */
+input[type="text"], 
+input[type="email"], 
+input[type="password"], 
+.form-control {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: var(--fe-radius-sm);
+  border: 1px solid var(--fe-border);
+  background-color: var(--fe-surface);
+  color: var(--fe-text);
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+input[type="text"]:focus, 
+input[type="email"]:focus, 
+input[type="password"]:focus, 
+.form-control:focus {
+  border-color: var(--fe-primary);
+  box-shadow: 0 0 0 0.25rem rgba(143, 0, 143, 0.15);
+  outline: 0;
+  background-color: var(--fe-surface);
+  color: var(--fe-text);
+}

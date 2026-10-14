@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Nova Receita — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6">
+    <div class="fe-card">
+      <h1 class="h5 fw-bold mb-3">
+        <i class="bi bi-plus-circle text-success me-1"></i>Nova receita
+      </h1>
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">Valor (por parcela, se parcelado):</label>
+          {{ form.valor }}
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small mb-1">Data:</label>
+            {{ form.data }}
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Categoria:</label>
+            {{ form.categoria }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">Descrição:</label>
+          {{ form.descricao }}
+        </div>
+
+        <!-- CAMPOS DE RECORRÊNCIA E PARCELAS -->
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small mb-1">Tipo de lançamento:</label>
+            {{ form.tipo_recorrencia }}
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Qtd. de parcelas:</label>
+            {{ form.total_parcelas }}
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-success text-white fw-bold w-100">Salvar receita</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectTipo = document.querySelector('select[name="tipo_recorrencia"]');
+    const inputParcelas = document.querySelector('input[name="total_parcelas"]');
+    const containerParcelas = inputParcelas ? inputParcelas.closest('.col-6') : null;
+
+    function alternarCampoParcelas() {
+      if (!selectTipo || !containerParcelas) return;
+
+      if (selectTipo.value === 'PARCELADA') {
+        containerParcelas.style.display = 'block';
+        if (inputParcelas.value <= 1) {
+          inputParcelas.value = 2;
+        }
+      } else {
+        containerParcelas.style.display = 'none';
+        inputParcelas.value = 1;
+      }
+    }
+
+    if (selectTipo) {
+      alternarCampoParcelas();
+      selectTipo.addEventListener('change', alternarCampoParcelas);
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Limites por categoria — FinanceEasy{% endblock %}
+{% block content %}
+<h1 class="h5 fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-1"></i>Limites de gastos por categoria</h1>
+<p class="text-muted small mb-3">Defina um teto mensal e a gente te avisa quando você chegar perto — sem julgamento.</p>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-5">
+    <div class="fe-card">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          {{ form.categoria.label_tag }}
+          {{ form.categoria }}
+        </div>
+        <div class="mb-3">
+          {{ form.teto_mensal.label_tag }}
+          {{ form.teto_mensal }}
+        </div>
+        <button type="submit" class="btn fe-btn-primary w-100">Salvar limite</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-12 col-lg-7">
+    <div class="d-flex flex-column gap-2">
+      {% for o in orcamentos_atuais %}
+        <div class="fe-card d-flex justify-content-between align-items-center">
+          <span><i class="bi {{ o.categoria.icone }} me-1" style="color: {{ o.categoria.cor }};"></i>{{ o.categoria.nome }}</span>
+          <span class="fw-semibold">{{ o.teto_mensal|brl }} / mês</span>
+        </div>
+      {% empty %}
+        <div class="fe-empty-state">
+          <i class="bi bi-speedometer2" style="font-size: 2rem;"></i>
+          <p class="mb-0 mt-2">Nenhum limite definido ainda.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

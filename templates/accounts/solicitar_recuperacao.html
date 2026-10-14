@@ -1,0 +1,31 @@
+{% extends "base_public.html" %}
+{% block title %}Recuperar senha — FinanceEasy{% endblock %}
+
+{% block auth_content %}
+<h2 class="h5 fw-bold mb-1 text-center">Recuperar senha</h2>
+<p class="text-muted small text-center mb-3">Informe seu e-mail cadastrado e enviaremos um código de 6 dígitos.</p>
+
+{% if form.non_field_errors %}
+  <div class="alert alert-danger py-2 small rounded-3 mb-3" role="alert">
+    {{ form.non_field_errors }}
+  </div>
+{% endif %}
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  
+  <div class="mb-3">
+    <label for="{{ form.email.id_for_label }}" class="form-label small fw-semibold">E-mail</label>
+    {{ form.email }}
+    {% for erro in form.email.errors %}
+      <div class="text-danger small mt-1">{{ erro }}</div>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn fe-btn-primary w-100 py-2 shadow-sm">Enviar código</button>
+</form>
+
+<p class="text-center small text-muted mt-4 mb-0">
+  <a class="fw-semibold text-decoration-none" href="{% url 'accounts:login' %}">Voltar para o login</a>
+</p>
+{% endblock %}

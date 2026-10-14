@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{% if divida %}Editar Dívida{% else %}Nova Dívida{% endif %} — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6">
+    <div class="fe-card">
+      <h1 class="h5 fw-bold mb-3">
+        <i class="bi bi-shield-exclamation text-warning me-1"></i>
+        {% if divida %}Editar Dívida{% else %}Cadastrar Nova Dívida{% endif %}
+      </h1>
+
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">Nome do Credor / Instituição:</label>
+          {{ form.credor }}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small mb-1">Tipo de Passivo / Categoria:</label>
+          {{ form.categoria_passivo }}
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small mb-1">Valor da Parcela:</label>
+            {{ form.valor_parcela }}
+          </div>
+          <div class="col-6">
+            <label class="form-label small mb-1">Total de Parcelas:</label>
+            {{ form.total_parcelas }}
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-4">
+            <label class="form-label small mb-1">Parcelas Pagas:</label>
+            {{ form.parcelas_pagas }}
+          </div>
+          <div class="col-4">
+            <label class="form-label small mb-1">Dia Vencimento:</label>
+            {{ form.dia_vencimento }}
+          </div>
+          <div class="col-4">
+            <label class="form-label small mb-1">Saldo Devedor Total:</label>
+            {{ form.saldo_total_devedor }}
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-warning text-dark fw-bold flex-grow-1">Salvar</button>
+          <a href="{% url 'debts:lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const inputValor = document.querySelector('input[name="valor_parcela"]');
+    const inputTotalParcelas = document.querySelector('input[name="total_parcelas"]');
+    const inputParcelasPagas = document.querySelector('input[name="parcelas_pagas"]');
+    const inputSaldoTotal = document.querySelector('input[name="saldo_total_devedor"]');
+
+    function calcularSaldoTotal() {
+      if (!inputValor || !inputTotalParcelas || !inputSaldoTotal) return;
+      
+      const valor = parseFloat(inputValor.value) || 0;
+      const total = parseInt(inputTotalParcelas.value) || 0;
+      const pagas = parseInt(inputParcelasPagas.value) || 0;
+      
+      const restantes = Math.max(total - pagas, 0);
+      const saldoCalculado = valor * restantes;
+
+      inputSaldoTotal.value = saldoCalculado > 0 ? saldoCalculado.toFixed(2) : '0.00';
+    }
+
+    if (inputValor && inputTotalParcelas) {
+      inputValor.addEventListener('input', calcularSaldoTotal);
+      inputTotalParcelas.addEventListener('input', calcularSaldoTotal);
+      if (inputParcelasPagas) {
+        inputParcelasPagas.addEventListener('input', calcularSaldoTotal);
+      }
+      calcularSaldoTotal();
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Painel — FinanceEasy{% endblock %}
+
+{% block content %}
+<!-- Boas-vindas e Ação Principal -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h4 fw-bold mb-0">Olá, {{ user.primeiro_nome }} 👋</h1>
+    <p class="text-muted small mb-0">{{ mes_referencia|date:"F/Y"|capfirst }}</p>
+  </div>
+  <a href="{% url 'transactions:importar_extrato' %}" class="btn fe-btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-1 shadow-sm">
+    <i class="bi bi-cloud-upload"></i> Importar extrato do mês
+  </a>
+</div>
+
+<!-- Botão de Importação para Mobile -->
+<div class="d-md-none mb-3">
+  <a href="{% url 'transactions:importar_extrato' %}" class="btn fe-btn-primary w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+    <i class="bi bi-cloud-upload"></i> Importar extrato do mês
+  </a>
+</div>
+
+<!-- Cabeçalho financeiro tradicional -->
+<div class="row g-3 mb-3">
+  <!-- Card Receitas com gatilho do Modal -->
+  <div class="col-12 col-md-4">
+    <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalReceitas" style="cursor: pointer;">
+      <p class="text-muted small mb-1"><i class="bi bi-arrow-down-circle text-success me-1"></i>Receitas do mês</p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_receitas|brl }}</p>
+      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
+    </div>
+  </div>
+
+  <!-- Card Despesas com gatilho do Modal -->
+  <div class="col-12 col-md-4">
+    <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalDespesas" style="cursor: pointer;">
+      <p class="text-muted small mb-1"><i class="bi bi-arrow-up-circle text-danger me-1"></i>Despesas realizadas</p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_despesas|brl }}</p>
+      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="fe-card h-100">
+      <p class="text-muted small mb-1"><i class="bi bi-wallet2 me-1"></i>Saldo disponível</p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ saldo_disponivel|brl }}</p>
+    </div>
+  </div>
+</div>
+
+<!-- Bloco central da persona: Quanto Sobra com Segurança (UC08) -->
+<div class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %} mb-3">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <p class="mb-1 fw-semibold"><i class="bi bi-shield-check me-1"></i>Quanto sobra com segurança</p>
+      <p class="fe-valor-grande mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ sobra_segura|brl }}</p>
+      <p class="small mb-0 mt-1 opacity-75">Saldo disponível menos as contas e parcelas que vencem nos próximos 7 dias.</p>
+    </div>
+    <i class="bi bi-piggy-bank" style="font-size: 2.5rem; opacity: 0.35;"></i>
+  </div>
+</div>
+
+<!-- Carrossel de contas próximas -->
+<div class="fe-card mb-3">
+  <p class="fw-semibold mb-3"><i class="bi bi-calendar-event me-1"></i>Contas próximas (7 dias)</p>
+  {% if proximas_contas %}
+    <div class="d-flex gap-3 overflow-auto pb-2">
+      {% for item in proximas_contas %}
+        <div class="border rounded-3 p-3 flex-shrink-0" style="min-width: 200px; border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+          <p class="small text-muted mb-1">
+            {% if item.tipo == "divida" %}<i class="bi bi-credit-card-2-front me-1"></i>Parcela{% else %}<i class="bi bi-house-door me-1"></i>Conta fixa{% endif %}
+          </p>
+          <p class="fw-semibold mb-1">{{ item.nome }}</p>
+          <p class="mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">{{ item.valor|brl }}</p>
+          <span class="badge {% if item.vencimento|dias_ate == 'vence hoje' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+            {{ item.vencimento|dias_ate }}
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted small mb-0">Nenhuma conta vencendo nos próximos 7 dias. Respire tranquilo(a). 🌿</p>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <!-- Top 3 categorias -->
+  <div class="col-12 col-lg-7">
+    <div class="fe-card h-100">
+      <p class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês</p>
+      {% if top_categorias %}
+        {% for cat in top_categorias %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+              <span><i class="bi {{ cat.categoria__icone }} me-1" style="color: {{ cat.categoria__cor }};"></i>{{ cat.categoria__nome|default:"Sem categoria" }}</span>
+              <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ cat.total|brl }}</span>
+            </div>
+            <div class="fe-progress">
+              <div class="fe-progress-bar" style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small mb-0">Você ainda não registrou despesas este mês.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Colchão de imprevistos -->
+  <div class="col-12 col-lg-5">
+    <div class="fe-card h-100 d-flex flex-column justify-content-between">
+      <div>
+        <p class="fw-semibold mb-2"><i class="bi bi-umbrella me-1"></i>Colchão para imprevistos</p>
+        {% if colchao %}
+          <p class="small text-muted mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
+            {{ colchao.valor_acumulado|brl }} de {{ colchao.valor_alvo|brl }}
+          </p>
+          <div class="fe-progress mb-3">
+            <div class="fe-progress-bar" style="width: {{ colchao.percentual_concluido }}%;"></div>
+          </div>
+        {% else %}
+          <p class="small text-muted mb-3">Crie sua reserva de segurança para imprevistos e fique tranquilo(a).</p>
+        {% endif %}
+      </div>
+      <div>
+        <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary w-100 shadow-sm">Guardar um troco</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- HG Brasil Finance -->
+<div class="fe-card mt-3">
+  <p class="fw-semibold mb-3"><i class="bi bi-graph-up-arrow me-1"></i>Mercado agora</p>
+  {% if hgbrasil.disponivel %}
+    <div class="row g-3">
+      {% for moeda in hgbrasil.moedas %}
+        <div class="col-6 col-md-3">
+          <p class="small text-muted mb-0">{{ moeda.nome }}</p>
+          <p class="fw-semibold mb-0">R$ {{ moeda.compra|default:moeda.venda }}</p>
+        </div>
+      {% endfor %}
+      {% if hgbrasil.taxas.selic %}
+        <div class="col-6 col-md-3">
+          <p class="small text-muted mb-0">Selic</p>
+          <p class="fw-semibold mb-0">{{ hgbrasil.taxas.selic }}%</p>
+        </div>
+      {% endif %}
+      {% if hgbrasil.taxas.cdi %}
+        <div class="col-6 col-md-3">
+          <p class="small text-muted mb-0">CDI</p>
+          <p class="fw-semibold mb-0">{{ hgbrasil.taxas.cdi }}%</p>
+        </div>
+      {% endif %}
+    </div>
+    {% if hgbrasil.atualizado_em %}
+      <p class="small text-muted mt-2 mb-0">Atualizado em {{ hgbrasil.atualizado_em }} — fonte: HG Brasil</p>
+    {% endif %}
+  {% else %}
+    <p class="small text-muted mb-0">
+      <i class="bi bi-info-circle me-1"></i>{{ hgbrasil.motivo_indisponivel }}
+    </p>
+  {% endif %}
+</div>
+
+
+<!-- MODAL RECEITAS -->
+<div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-down-circle me-2"></i>Receitas do Mês</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th class="text-end">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in receitas_detalhes %}
+                <tr>
+                  <td>{{ item.data|date:"d/m/Y" }}</td>
+                  <td>{{ item.descricao }}</td>
+                  <td><span class="badge bg-secondary">{{ item.categoria.nome }}</span></td>
+                  <td class="text-end text-success fw-bold">{{ item.valor|brl }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-3 text-muted">Nenhuma receita registrada para este mês.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DESPESAS -->
+<div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-up-circle me-2"></i>Despesas Realizadas no Mês</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th class="text-end">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in despesas_detalhes %}
+                <tr>
+                  <td>{{ item.data|date:"d/m/Y" }}</td>
+                  <td>{{ item.descricao }}</td>
+                  <td><span class="badge bg-secondary">{{ item.categoria.nome }}</span></td>
+                  <td class="text-end text-danger fw-bold">{{ item.valor|brl }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-3 text-muted">Nenhuma despesa registrada para este mês.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

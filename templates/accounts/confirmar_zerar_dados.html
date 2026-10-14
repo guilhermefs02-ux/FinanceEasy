@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Zerar Dados do Usuário — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="fe-card border-danger shadow-sm text-center p-4">
+      <div class="mb-3 text-danger">
+        <i class="bi bi-exclamation-triangle-fill display-4"></i>
+      </div>
+      
+      <h1 class="h4 fw-bold text-danger mb-2">Apagar Todos os Dados?</h1>
+      <p class="text-muted small mb-4">
+        Esta ação apagar permanentemente **todas as suas transações, extratos, dívidas, objetivos e configurações de categoria**. Esta operação é irreversível!
+      </p>
+
+      <form method="post" class="d-flex justify-content-center gap-3">
+        {% csrf_token %}
+        <a href="{% url 'dashboard:painel' %}" class="btn btn-outline-secondary fw-bold px-4">
+          Cancelar
+        </a>
+        <button type="submit" class="btn btn-danger fw-bold px-4">
+          <i class="bi bi-trash-fill me-2"></i>Sim, Apagar Tudo
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

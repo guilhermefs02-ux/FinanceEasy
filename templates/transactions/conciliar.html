@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Conferir importação — FinanceEasy{% endblock %}
+{% block content %}
+<h1 class="h5 fw-bold mb-1"><i class="bi bi-check2-square text-primary me-1"></i>Confira as transações importadas</h1>
+<p class="text-muted small mb-3">
+  {{ batch.arquivo_nome }} — {{ pendentes.count }} transações para revisar.
+  Desmarque o que não quiser incluir (ex.: transferências entre contas próprias).
+</p>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="fe-card mb-3 d-flex align-items-center gap-2">
+    <input type="checkbox" id="marcar-todos" class="form-check-input" checked>
+    <label for="marcar-todos" class="form-check-label small mb-0">Selecionar/desmarcar todas</label>
+  </div>
+
+  <div class="d-flex flex-column gap-2">
+    {% for t in pendentes %}
+      <div class="fe-card">
+        <div class="row g-2 align-items-center">
+          <div class="col-auto">
+            <input type="checkbox" name="incluir_{{ t.pk }}" id="incluir_{{ t.pk }}" class="form-check-input fe-incluir-checkbox" checked>
+          </div>
+          <div class="col">
+            <label for="incluir_{{ t.pk }}" class="mb-1 d-block">
+              <span class="fw-semibold">{{ t.descricao_origem_banco|default:"(sem descrição)" }}</span>
+              <span class="text-muted small ms-2">{{ t.data|date:"d/m/Y" }}</span>
+            </label>
+            <span class="{% if t.tipo == 'receita' %}text-success{% else %}text-danger{% endif %} fw-semibold">
+              {% if t.tipo == 'despesa' %}-{% else %}+{% endif %}{{ t.valor|brl }}
+            </span>
+            {% if t.categoria_sugerida_confianca == "alta" %}
+              <span class="fe-badge-pronto ms-2"><i class="bi bi-check-lg"></i> Pronto</span>
+            {% else %}
+              <span class="fe-badge-revisar ms-2"><i class="bi bi-question-circle"></i> Qual é esta despesa?</span>
+            {% endif %}
+          </div>
+          <div class="col-12 col-md-4">
+            <select name="categoria_{{ t.pk }}" class="form-select form-select-sm">
+              {% if t.tipo == "receita" %}
+                {% for c in receita_categorias %}
+                  <option value="{{ c.pk }}" {% if c.pk == t.categoria_id %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+              {% else %}
+                {% for c in despesa_categorias %}
+                  <option value="{{ c.pk }}" {% if c.pk == t.categoria_id %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+              {% endif %}
+            </select>
+            {% if t.categoria_sugerida_confianca != "alta" %}
+              <div class="d-flex gap-1 mt-2 flex-wrap">
+                {% for c in despesa_categorias|slice:":4" %}
+                  <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                          onclick="document.querySelector('select[name=categoria_{{ t.pk }}]').value='{{ c.pk }}'">
+                    {{ c.nome }}
+                  </button>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn fe-btn-primary w-100 py-2 mt-3">
+    <i class="bi bi-check2-all me-1"></i>Aprovar e salvar lançamentos
+  </button>
+</form>
+
+<!-- Botão de Cancelar Vermelho (Preenchido) -->
+  <form method="post" action="{% url 'transactions:cancelar_importacao' batch.pk %}" class="m-0 flex-grow-1">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger text-white py-2 px-4 w-100 fw-semibold" style="border-radius: var(--bs-border-radius-pill, 50rem);" onclick="return confirm('Tem certeza que deseja cancelar e descartar esta importação?');">
+      <i class="bi bi-x-circle me-1"></i> Cancelar importação
+    </button>
+  </form>
+</div>
+{% endblock %}

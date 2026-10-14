@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Extrato — FinanceEasy{% endblock %}
+{% block content %}
+<h1 class="h5 fw-bold mb-3"><i class="bi bi-receipt text-primary me-1"></i>Extrato e relatórios</h1>
+
+<!-- NAVEGAÇÃO TEMPORAL (Mês / Ano com Dropdowns e Setas) -->
+<div class="fe-card mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <!-- Botão Anterior -->
+  <a href="?mes={% if mes_atual == 1 %}12{% else %}{{ mes_atual|add:'-1' }}{% endif %}&ano={% if mes_atual == 1 %}{{ ano_atual|add:'-1' }}{% else %}{{ ano_atual }}{% endif %}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_categoria %}&categoria={{ filtro_categoria }}{% endif %}" 
+     class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-chevron-left me-1"></i>Anterior
+  </a>
+
+  <!-- Dropdowns de Mês e Ano -->
+  <form method="get" class="d-flex align-items-center gap-2 m-0">
+    <!-- Preserva os filtros selecionados -->
+    {% if filtro_tipo %}<input type="hidden" name="tipo" value="{{ filtro_tipo }}">{% endif %}
+    {% if filtro_categoria %}<input type="hidden" name="categoria" value="{{ filtro_categoria }}">{% endif %}
+
+    <select name="mes" class="form-select form-select-sm fw-semibold text-primary" onchange="this.form.submit()">
+      {% for num_mes, nome_mes in lista_meses %}
+        <option value="{{ num_mes }}" {% if num_mes == mes_atual %}selected{% endif %}>
+          {{ nome_mes }}
+        </option>
+      {% endfor %}
+    </select>
+
+    <select name="ano" class="form-select form-select-sm fw-semibold text-primary" onchange="this.form.submit()">
+      {% for ano in anos_disponiveis %}
+        <option value="{{ ano }}" {% if ano == ano_atual %}selected{% endif %}>
+          {{ ano }}
+        </option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <!-- Botão Próximo -->
+  <a href="?mes={% if mes_atual == 12 %}1{% else %}{{ mes_atual|add:'1' }}{% endif %}&ano={% if mes_atual == 12 %}{{ ano_atual|add:'1' }}{% else %}{{ ano_atual }}{% endif %}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_categoria %}&categoria={{ filtro_categoria }}{% endif %}" 
+     class="btn btn-sm btn-outline-secondary">
+    Próximo<i class="bi bi-chevron-right ms-1"></i>
+  </a>
+</div>
+
+<!-- FILTROS DE PESQUISA -->
+<div class="fe-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <!-- Preserva o mês e ano selecionados na navegação temporal -->
+    <input type="hidden" name="mes" value="{{ mes_atual }}">
+    <input type="hidden" name="ano" value="{{ ano_atual }}">
+
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1">Período</label>
+      <select name="periodo" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="diario" {% if filtro_periodo == "diario" %}selected{% endif %}>Diário</option>
+        <option value="semanal" {% if filtro_periodo == "semanal" %}selected{% endif %}>Semanal</option>
+        <option value="mensal" {% if filtro_periodo == "mensal" %}selected{% endif %}>Mensal</option>
+        <option value="anual" {% if filtro_periodo == "anual" %}selected{% endif %}>Anual</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1">Tipo</label>
+      <select name="tipo" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="receita" {% if filtro_tipo == "receita" %}selected{% endif %}>Receitas</option>
+        <option value="despesa" {% if filtro_tipo == "despesa" %}selected{% endif %}>Despesas</option>
+      </select>
+    </div>
+    <div class="col-8 col-md-4">
+      <label class="form-label small mb-1">Categoria</label>
+      <select name="categoria" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for c in categorias_despesa %}
+          <option value="{{ c.pk }}" {% if filtro_categoria == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-4 col-md-2">
+      <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-secondary w-100">Limpar</a>
+    </div>
+  </form>
+</div>
+
+<!-- COMPARATIVO MÊS ATUAL X ANTERIOR -->
+<div class="fe-card mb-3">
+  <p class="fw-semibold mb-2 small">Mês atual x mês anterior (despesas)</p>
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ despesas_mes_atual|brl }} vs {{ despesas_mes_anterior|brl }}</span>
+    {% if variacao_percentual is not None %}
+      <span class="badge {% if variacao_percentual > 0 %}bg-danger{% else %}bg-success{% endif %}">
+        {% if variacao_percentual > 0 %}+{% endif %}{{ variacao_percentual }}%
+      </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- LISTA DE TRANSAÇÕES -->
+<div class="d-flex flex-column gap-2">
+  {% for t in transacoes %}
+    <div class="fe-card d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <span class="me-2">
+          {% if t.origem == "importado" %}<i class="bi bi-cloud-arrow-down text-muted" title="Importado"></i>{% else %}<i class="bi bi-pencil-square text-muted" title="Manual"></i>{% endif %}
+        </span>
+        <span class="fe-chip-categoria me-2">
+          {% if t.categoria %}<i class="bi {{ t.categoria.icone }}"></i>{{ t.categoria.nome }}{% else %}Sem categoria{% endif %}
+        </span>
+
+        <!-- INDICADOR DE RECORRÊNCIA OU PARCELA (1/6, 2/6, Fixa) -->
+        {% if t.identificador_parcela %}
+          <span class="badge bg-secondary me-2">{{ t.identificador_parcela }}</span>
+        {% endif %}
+
+        <!-- BADGE DE STATUS (Confirmado / Pendente) -->
+        {% if t.status == 'PENDENTE' %}
+          <span class="badge bg-warning text-dark">Pendente</span>
+        {% endif %}
+
+        <div class="small text-muted mt-1">{{ t.descricao|default:"(sem descrição)" }} — {{ t.data|date:"d/m/Y" }}</div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="fw-semibold {% if t.tipo == 'receita' %}text-success{% else %}text-danger{% endif %} {% if privacy_mode_on %}fe-privado{% endif %}">
+          {% if t.tipo == 'despesa' %}-{% else %}+{% endif %}{{ t.valor|brl }}
+        </span>
+        <a href="{% url 'transactions:editar_transacao' t.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+        <form method="post" action="{% url 'transactions:excluir_transacao' t.pk %}" data-confirm="Excluir este lançamento?">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </form>
+      </div>
+    </div>
+  {% empty %}
+    <div class="fe-empty-state">
+      <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+      <p class="mb-0 mt-2">Nenhum lançamento neste período.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

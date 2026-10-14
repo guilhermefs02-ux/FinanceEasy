@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Comparativo & Desempenho — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h5 fw-bold mb-0">
+    <i class="bi bi-bar-chart-line text-primary me-2"></i>Comparativo & Desempenho
+  </h1>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- GRÁFICO 1: EVOLUÇÃO (6 MESES, 12 MESES OU ANO A ANO) -->
+  <div class="col-12 col-lg-8">
+    <div class="fe-card">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="h6 fw-bold mb-0" id="tituloEvolucao">Evolução Financeira (12 Meses)</h2>
+        
+        <!-- SELETOR COM 3 VISÕES -->
+        <div class="btn-group btn-group-sm" role="group" aria-label="Seletor de visão">
+          <button type="button" class="btn btn-outline-primary" id="btn6M">6 Meses</button>
+          <button type="button" class="btn btn-primary active" id="btn12M">12 Meses</button>
+          <button type="button" class="btn btn-outline-primary" id="btnAnoAAno">Ano a Ano</button>
+        </div>
+      </div>
+      
+      <div style="position: relative; height:320px;">
+        <canvas id="chartEvolucao"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO 2: DESPESAS POR CATEGORIA -->
+  <div class="col-12 col-lg-4">
+    <div class="fe-card">
+      <h2 class="h6 fw-bold mb-3">Despesas Mês Atual por Categoria</h2>
+      <div style="position: relative; height:240px;">
+        <canvas id="chartCategorias"></canvas>
+      </div>
+      <p class="text-muted text-center small mt-3 mb-0">
+        <i class="bi bi-info-circle me-1"></i>Passe o mouse ou toque para detalhar os valores
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Dados 6 Meses
+    const meses6 = JSON.parse('{{ meses_labels_json|escapejs }}');
+    const rec6 = JSON.parse('{{ receitas_data_json|escapejs }}');
+    const desp6 = JSON.parse('{{ despesas_data_json|escapejs }}');
+
+    // Dados 12 Meses (Ano Inteiro)
+    const meses12 = JSON.parse('{{ meses_labels_12_json|escapejs }}');
+    const rec12 = JSON.parse('{{ receitas_data_12_json|escapejs }}');
+    const desp12 = JSON.parse('{{ despesas_data_12_json|escapejs }}');
+
+    // Dados Ano a Ano
+    const anos = JSON.parse('{{ anos_labels_json|default:"[]"|escapejs }}');
+    const recAnos = JSON.parse('{{ receitas_anos_data_json|default:"[]"|escapejs }}');
+    const despAnos = JSON.parse('{{ despesas_anos_data_json|default:"[]"|escapejs }}');
+
+    // Categorias
+    const catLabels = JSON.parse('{{ cat_labels_json|escapejs }}');
+    const catData = JSON.parse('{{ cat_data_json|escapejs }}');
+
+    // 1. Gráfico Principal (Inicializa no Ano Inteiro / 12M)
+    const canvasEvolucao = document.getElementById('chartEvolucao');
+    let chartEvolucao;
+
+    if (canvasEvolucao) {
+      chartEvolucao = new Chart(canvasEvolucao.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: meses12,
+          datasets: [
+            {
+              label: 'Receitas (R$)',
+              data: rec12,
+              backgroundColor: 'rgba(25, 135, 84, 0.75)',
+              borderColor: 'rgb(25, 135, 84)',
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: 'Despesas (R$)',
+              data: desp12,
+              backgroundColor: 'rgba(220, 53, 69, 0.75)',
+              borderColor: 'rgb(220, 53, 69)',
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'top' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // Lógica do Seletor com 3 Botões
+    const btn6M = document.getElementById('btn6M');
+    const btn12M = document.getElementById('btn12M');
+    const btnAnoAAno = document.getElementById('btnAnoAAno');
+    const titulo = document.getElementById('tituloEvolucao');
+
+    function resetBotoes() {
+      btn6M.className = 'btn btn-outline-primary';
+      btn12M.className = 'btn btn-outline-primary';
+      btnAnoAAno.className = 'btn btn-outline-primary';
+    }
+
+    if (btn6M && btn12M && btnAnoAAno) {
+      btn6M.addEventListener('click', function() {
+        resetBotoes();
+        this.className = 'btn btn-primary active';
+        titulo.innerText = 'Evolução Financeira (Últimos 6 Meses)';
+        chartEvolucao.data.labels = meses6;
+        chartEvolucao.data.datasets[0].data = rec6;
+        chartEvolucao.data.datasets[1].data = desp6;
+        chartEvolucao.update();
+      });
+
+      btn12M.addEventListener('click', function() {
+        resetBotoes();
+        this.className = 'btn btn-primary active';
+        titulo.innerText = 'Evolução Financeira (12 Meses)';
+        chartEvolucao.data.labels = meses12;
+        chartEvolucao.data.datasets[0].data = rec12;
+        chartEvolucao.data.datasets[1].data = desp12;
+        chartEvolucao.update();
+      });
+
+      btnAnoAAno.addEventListener('click', function() {
+        resetBotoes();
+        this.className = 'btn btn-primary active';
+        titulo.innerText = 'Comparativo Consolidado Ano a Ano';
+        chartEvolucao.data.labels = anos.length ? anos : ['Sem dados'];
+        chartEvolucao.data.datasets[0].data = recAnos.length ? recAnos : [0];
+        chartEvolucao.data.datasets[1].data = despAnos.length ? despAnos : [0];
+        chartEvolucao.update();
+      });
+    }
+
+    // 2. Gráfico de Rosca - Categorias
+    const canvasCat = document.getElementById('chartCategorias');
+    if (canvasCat) {
+      new Chart(canvasCat.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: catLabels.length > 0 ? catLabels : ['Sem despesas'],
+          datasets: [{
+            data: catData.length > 0 ? catData : [1],
+            backgroundColor: [
+              '#0d6efd', '#198754', '#ffc107', '#dc3545', 
+              '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997'
+            ],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { boxWidth: 12, padding: 8, font: { size: 11 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  let label = context.label || '';
+                  let val = context.raw || 0;
+                  return ' ' + label + ': R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

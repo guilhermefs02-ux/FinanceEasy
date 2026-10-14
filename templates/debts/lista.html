@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Plano de Quitação e Dívidas — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h5 fw-bold mb-0">
+    <i class="bi bi-shield-exclamation text-warning me-1"></i>Dívidas e Passivos
+  </h1>
+  <a href="{% url 'debts:nova' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Nova Dívida
+  </a>
+</div>
+
+<!-- CARD RESUMO -->
+<div class="row g-2 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="fe-card">
+      <small class="text-muted d-block">Saldo Devedor Total Acumulado</small>
+      <span class="fs-4 fw-bold text-danger {% if privacy_mode_on %}fe-privado{% endif %}">
+        {{ saldo_total_devedor|brl }}
+      </span>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="fe-card">
+      <small class="text-muted d-block">Dívidas Ativas em Aberto</small>
+      <span class="fs-4 fw-bold text-dark">
+        {{ dividas|length }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<h2 class="h6 fw-bold mb-2 text-muted">Dívidas Ativas (Priorizando Juros Altos)</h2>
+
+<!-- LISTA DE DÍVIDAS ATIVAS -->
+<div class="d-flex flex-column gap-3 mb-4">
+  {% for d in dividas %}
+    <div class="fe-card border-start border-4 {% if d.eh_juros_alto %}border-danger{% else %}border-primary{% endif %}">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <h5 class="fw-bold mb-0">{{ d.credor }}</h5>
+            <span class="badge bg-light text-dark border">{{ d.get_categoria_passivo_display }}</span>
+            {% if d.eh_juros_alto %}
+              <span class="badge bg-danger"><i class="bi bi-fire me-1"></i>Juros Altos</span>
+            {% endif %}
+          </div>
+          <small class="text-muted">
+            Vencimento todo dia <strong>{{ d.dia_vencimento }}</strong> | 
+            Parcelas: <strong>{{ d.parcelas_pagas }}/{{ d.total_parcelas }}</strong> (Faltam {{ d.parcelas_restantes }})
+          </small>
+        </div>
+
+        <div class="text-end">
+          <small class="text-muted d-block">Saldo Devedor</small>
+          <span class="fs-5 fw-bold text-danger {% if privacy_mode_on %}fe-privado{% endif %}">
+            {{ d.saldo_total_devedor|brl }}
+          </span>
+          <small class="text-muted d-block">Parcela: {{ d.valor_parcela|brl }}</small>
+        </div>
+      </div>
+
+      <!-- BARRA DE PROGRESSO -->
+      <div class="progress mt-3" style="height: 8px;">
+        <div class="progress-bar bg-success" role="progressbar" style="width: {{ d.percentual_quitado }}%;" aria-valuenow="{{ d.percentual_quitado }}" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-1">
+        <small class="text-muted">{{ d.percentual_quitado }}% quitado</small>
+      </div>
+
+      <!-- AÇÕES -->
+      <div class="d-flex justify-content-end align-items-center gap-2 mt-3 pt-2 border-top">
+        <form method="post" action="{% url 'debts:pagar' d.pk %}" class="d-inline">
+          {% csrf_token %}
+          <input type="hidden" name="debita_saldo_mes" value="on">
+          <button type="submit" class="btn btn-sm btn-success fw-semibold">
+            <i class="bi bi-check-circle me-1"></i>Pagar Parcela ({{ d.valor_parcela|brl }})
+          </button>
+        </form>
+        <a href="{% url 'debts:editar' d.pk %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'debts:excluir' d.pk %}" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-trash"></i>
+        </a>
+      </div>
+    </div>
+  {% empty %}
+    <div class="fe-empty-state">
+      <i class="bi bi-emoji-smile text-success" style="font-size: 2.5rem;"></i>
+      <p class="mb-0 mt-2 fw-semibold">Nenhuma dívida ativa cadastrada!</p>
+      <small class="text-muted">Parabéns por manter suas contas sob controle.</small>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- DÍVIDAS QUITADAS -->
+{% if quitadas %}
+  <h2 class="h6 fw-bold mb-2 text-muted">Dívidas Quitadas</h2>
+  <div class="d-flex flex-column gap-2 opacity-75">
+    {% for q in quitadas %}
+      <div class="fe-card d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <span class="badge bg-success me-2"><i class="bi bi-check-all me-1"></i>Quitada</span>
+          <strong>{{ q.credor }}</strong> — {{ q.get_categoria_passivo_display }}
+        </div>
+        <div class="text-end">
+          <small class="text-muted d-block">Total Pago</small>
+          <span class="fw-bold text-decoration-line-through">{{ q.valor_parcela|brl }} x {{ q.total_parcelas }}</span>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

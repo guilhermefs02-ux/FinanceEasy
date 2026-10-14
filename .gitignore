@@ -1,0 +1,75 @@
+# ==========================================
+# 1. AMBIENTES VIRTUAIS & DEPENDÊNCIAS PYTHON
+# ==========================================
+venv/
+.venv/
+env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================================
+# 2. SEGREEDOS & VARIÁVEIS DE AMBIENTE (.ENV)
+# ==========================================
+# Ignora o arquivo que contém as chaves secretas e URLs locais
+.env
+.env.local
+.env.*.local
+
+# NOTA: O arquivo .env.example NÃO deve ser ignorado para servir de modelo no GitHub!
+
+# ==========================================
+# 3. BANCO DE DADOS LOCAL & MIDIA DE TESTES
+# ==========================================
+# Ignora o banco de dados leve do Django em dev local
+*.sqlite3
+*.db
+
+# Ignora arquivos de upload enviados por usuários em desenvolvimento local
+media/
+
+# ==========================================
+# 4. CONFIGURAÇÕES DA IDE / EDITOR DE CÓDIGO
+# ==========================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ
+.idea/
+
+# macOS DS_Store (Arquivos do Finder)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==========================================
+# 5. ARQUIVOS TEMPORÁRIOS & CACHE DE PYTHON
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+# Arquivos locais e dados sens�veis
+.env.*
+!.env.example
+staticfiles/
+

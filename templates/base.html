@@ -1,0 +1,200 @@
+{% load static %}
+{% load finance_extras %}
+<!DOCTYPE html>
+<html lang="pt-br" id="htmlPage" data-bs-theme="light">
+<head>
+  <script>
+  (function() {
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Se o usuário já escolheu manualmente, usa a escolha dele.
+    // Se nunca escolheu, segue o SO.
+    const themeToApply = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', themeToApply);
+  })();
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}FinanceEasy{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-fe sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'dashboard:painel' %}"><i class="bi bi-piggy-bank-fill me-1"></i>FinanceEasy</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" style="border-color: rgba(255,255,255,0.5);">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link {% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:painel' %}">Painel</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:extrato' %}">Extrato</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'debts:lista' %}">Dívidas</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'goals:lista' %}">Objetivos</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:assinaturas' %}">Despesas Fixas</a></li>
+        <a class="nav-link" href="{% url 'transactions:futuros' %}">Futuros</a>
+        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:comparativo_mensal' %}">Gráficos</a></li>
+      </ul>
+      <ul class="navbar-nav align-items-lg-center gap-lg-2">
+         <li class="nav-item dropdown">
+           <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-1" 
+                   type="button" id="bd-theme" data-bs-toggle="dropdown" aria-expanded="false" title="Alternar tema">
+             <i id="themeIcon" class="bi bi-circle-half"></i>
+           </button>
+           <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="bd-theme">
+             <li>
+               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="light">
+                 <i class="bi bi-sun-fill text-warning"></i> Claro
+               </button>
+             </li>
+             <li>
+               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="dark">
+                 <i class="bi bi-moon-stars-fill text-primary"></i> Escuro
+               </button>
+             </li>
+             <li>
+               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="auto">
+                 <i class="bi bi-circle-half text-secondary"></i>  Acompanhar Sistema
+               </button>
+             </li>
+           </ul>
+         </li>
+         <li class="nav-item">
+          <form method="post" action="{% url 'dashboard:alternar_privacidade' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-light" title="Modo privacidade — esconder valores">
+              <i class="bi {% if privacy_mode_on %}bi-eye-slash-fill{% else %}bi-eye-fill{% endif %}"></i>
+            </button>
+          </form>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-bell-fill"></i>
+            {% if total_notificacoes_nao_lidas %}
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">
+                {{ total_notificacoes_nao_lidas }}
+              </span>
+            {% endif %}
+          </a>
+          <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
+            <h6 class="dropdown-header px-0">Notificações</h6>
+            {% for n in notificacoes_recentes %}
+              <div class="small mb-2 pb-2 border-bottom">{{ n.mensagem }}</div>
+            {% empty %}
+              <p class="small text-muted mb-0">Nenhuma notificação por aqui.</p>
+            {% endfor %}
+            {% if total_notificacoes_nao_lidas %}
+              <form method="post" action="{% url 'dashboard:marcar_notificacoes_lidas' %}" class="mt-2">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-link p-0">Marcar todas como lidas</button>
+              </form>
+            {% endif %}
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+            <i class="bi bi-person-circle me-1"></i>{{ user.primeiro_nome }}
+          </a>
+          <div class="dropdown-menu dropdown-menu-end">
+            <a class="dropdown-item" href="{% url 'transactions:categorias' %}">Categorias</a>
+            <a class="dropdown-item" href="{% url 'transactions:orcamentos' %}">Limites por categoria</a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item text-danger fw-semibold" href="{% url 'accounts:zerar_dados' %}">
+              <i class="bi bi-shield-slash me-2"></i>Zerar Meus Dados (Reset)
+            </a>
+            <div class="dropdown-divider"></div>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button class="dropdown-item" type="submit">Sair</button>
+            </form>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<main class="container py-4">
+  {% if saldo_disponivel < 0 or sobra_segura < 0 %}
+    <div class="alert alert-danger d-flex align-items-center justify-content-between mb-3 shadow-sm" role="alert">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-octagon-fill fs-3 me-3 text-danger"></i>
+        <div>
+          <strong class="d-block">Alarme: Saldo / Projeção Negativa!</strong>
+          <span class="small">
+            {% if saldo_disponivel < 0 %}
+              Seu saldo disponível atual está negativo (<strong>{{ saldo_disponivel|brl }}</strong>).
+            {% else %}
+              Atenção: A sobra segura indica projeção negativa nos próximos dias (<strong>{{ sobra_segura|brl }}</strong>)!
+            {% endif %}
+          </span>
+        </div>
+      </div>
+      <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-danger fw-bold">
+        Ver Extrato
+      </a>
+    </div>
+  {% endif %}
+
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show fe-auto-dismiss" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+{% if user.is_authenticated %}
+<div class="dropdown">
+  <button class="fe-fab dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-label="Adicionar lançamento" style="border:none;">
+    <i class="bi bi-plus-lg"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="{% url 'transactions:registrar_despesa' %}"><i class="bi bi-dash-circle text-danger me-2"></i>Nova despesa</a></li>
+    <li><a class="dropdown-item" href="{% url 'transactions:registrar_receita' %}"><i class="bi bi-plus-circle text-success me-2"></i>Nova receita</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="{% url 'transactions:lote_despesas' %}"><i class="bi bi-list-check text-danger me-2"></i>Despesas em lote</a></li>
+    <li><a class="dropdown-item" href="{% url 'transactions:lote_receitas' %}"><i class="bi bi-list-check text-success me-2"></i>Receitas em lote</a></li>
+    <li><a class="dropdown-item" href="{% url 'transactions:lote_despesas_fixas' %}"><i class="bi bi-list-check text-primary me-2"></i>Despesas fixas em lote</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="{% url 'transactions:importar_extrato' %}"><i class="bi bi-cloud-upload text-primary me-2"></i>Importar extrato</a></li>
+  </ul>
+</div>
+
+<nav class="fe-bottom-nav">
+  <a href="{% url 'dashboard:painel' %}" class="{% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}">
+    <i class="bi bi-house-door-fill"></i>Painel
+  </a>
+  <a href="{% url 'transactions:extrato' %}" class="{% if request.resolver_match.url_name == 'extrato' %}active{% endif %}">
+    <i class="bi bi-receipt"></i>Extrato
+  </a>
+  <a href="{% url 'debts:lista' %}" class="{% if request.resolver_match.namespace == 'debts' %}active{% endif %}">
+    <i class="bi bi-credit-card-2-front"></i>Dívidas
+  </a>
+  <a href="{% url 'goals:lista' %}" class="{% if request.resolver_match.namespace == 'goals' %}active{% endif %}">
+    <i class="bi bi-piggy-bank"></i>Objetivos
+  </a>
+  <a href="{% url 'transactions:assinaturas' %}" class="{% if request.resolver_match.url_name == 'assinaturas' %}active{% endif %}">
+    <i class="bi bi-arrow-repeat"></i>Fixas
+  </a>
+</nav>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

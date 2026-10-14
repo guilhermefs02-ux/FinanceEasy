@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Lançamentos Futuros — FinanceEasy{% endblock %}
+
+{% block content %}
+<h1 class="h5 fw-bold mb-3"><i class="bi bi-calendar-check text-primary me-1"></i>Resumo de Compromissos Futuros</h1>
+
+<!-- CARD ÚNICO DE TOTALIZADOR DE DESPESAS FUTURAS -->
+<div class="row g-2 mb-3">
+  <div class="col-12">
+    <div class="fe-card">
+      <small class="text-muted d-block">Total de Despesas Futuras Comprometidas</small>
+      <span class="fs-4 fw-bold text-danger {% if privacy_mode_on %}fe-privado{% endif %}">
+        -{{ total_despesas_futuras|brl }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<h2 class="h6 fw-bold mb-2 text-muted">Compras Parceladas e Compromissos Recorrentes</h2>
+
+<!-- LISTA AGRUPADA DE PARCELAMENTOS -->
+<div class="d-flex flex-column gap-2 mb-4">
+  {% for g in agrupados %}
+    <div class="fe-card d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <span class="fe-chip-categoria me-2">
+          {% if g.categoria %}<i class="bi {{ g.categoria.icone }}"></i>{{ g.categoria.nome }}{% else %}Sem categoria{% endif %}
+        </span>
+
+        <span class="badge bg-primary me-2">
+          Faltam {{ g.qtd_restante }}{% if g.total_parcelas %} de {{ g.total_parcelas }}{% endif %} parcelas
+        </span>
+
+        <h6 class="fw-bold mb-0 mt-1 d-inline-block">{{ g.descricao }}</h6>
+
+        <div class="small text-muted mt-1">
+          <i class="bi bi-calendar-range me-1"></i>Período: <strong>{{ g.data_inicio|date:"m/Y" }}</strong> até <strong>{{ g.data_fim|date:"m/Y" }}</strong>
+          <span class="ms-2">({{ g.qtd_restante }}x de {{ g.valor_unitario|brl }})</span>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <small class="text-muted d-block">Total Restante</small>
+        <span class="fs-5 fw-bold {% if g.tipo == 'despesa' %}text-danger{% else %}text-success{% endif %} {% if privacy_mode_on %}fe-privado{% endif %}">
+          {% if g.tipo == 'despesa' %}-{% else %}+{% endif %}{{ g.valor_total_grupo|brl }}
+        </span>
+      </div>
+    </div>
+  {% empty %}
+    {% if not itens_avulsos %}
+      <div class="fe-empty-state">
+        <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+        <p class="mb-0 mt-2">Nenhum parcelamento futuro pendente.</p>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% if itens_avulsos %}
+  <h2 class="h6 fw-bold mb-2 text-muted">Outros Lançamentos Avulsos Futuros</h2>
+  <div class="d-flex flex-column gap-2">
+    {% for t in itens_avulsos %}
+      <div class="fe-card d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <span class="fe-chip-categoria me-2">
+            {% if t.categoria %}<i class="bi {{ t.categoria.icone }}"></i>{{ t.categoria.nome }}{% else %}Sem categoria{% endif %}
+          </span>
+          <strong>{{ t.descricao|default:"(sem descrição)" }}</strong> — Data: {{ t.data|date:"d/m/Y" }}
+        </div>
+        <span class="fw-semibold {% if t.tipo == 'receita' %}text-success{% else %}text-danger{% endif %} {% if privacy_mode_on %}fe-privado{% endif %}">
+          {% if t.tipo == 'despesa' %}-{% else %}+{% endif %}{{ t.valor|brl }}
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

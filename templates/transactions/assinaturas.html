@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Despesas fixas — FinanceEasy{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h5 fw-bold mb-0"><i class="bi bi-arrow-repeat text-primary me-1"></i>Despesas fixas</h1>
+  <a href="{% url 'transactions:lote_despesas_fixas' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-list-check me-1"></i>Em lote
+  </a>
+</div>
+
+<div class="fe-card mb-3">
+  <p class="mb-0">
+    Suas despesas fixas somam <strong>{{ total_mensal|brl }}</strong> por mês,
+    totalizando <strong>{{ total_anual|brl }}</strong> ao ano.
+  </p>
+  <p class="small text-muted mb-0 mt-1">
+    Lance aqui tudo que você tem de despesa fixa — aluguel, assinaturas, contas — para não precisar de outra planilha para controlar isso.
+  </p>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-5">
+    <div class="fe-card">
+      <p class="fw-semibold mb-3">Adicionar despesa fixa</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          {{ form.nome_servico.label_tag }}
+          {{ form.nome_servico }}
+        </div>
+        <div class="mb-3">
+          {{ form.categoria.label_tag }}
+          {{ form.categoria }}
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            {{ form.valor.label_tag }}
+            {{ form.valor }}
+          </div>
+          <div class="col-6">
+            {{ form.periodicidade.label_tag }}
+            {{ form.periodicidade }}
+          </div>
+        </div>
+        <div class="mb-3">
+          {{ form.dia_vencimento.label_tag }}
+          {{ form.dia_vencimento }}
+        </div>
+        <button type="submit" class="btn fe-btn-primary w-100">Salvar despesa fixa</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <div class="d-flex flex-column gap-2">
+      {% for item in itens %}
+        <div class="fe-card d-flex justify-content-between align-items-center">
+          <div>
+            <p class="fw-semibold mb-0"><i class="bi {{ item.categoria.icone }} me-1" style="color: {{ item.categoria.cor }};"></i>{{ item.nome_servico }}</p>
+            <p class="small text-muted mb-0">Vence dia {{ item.dia_vencimento }} — {{ item.get_periodicidade_display }}</p>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold {% if privacy_mode_on %}fe-privado{% endif %}">{{ item.valor|brl }}</span>
+            <form method="post" action="{% url 'transactions:remover_assinatura' item.pk %}" data-confirm="Remover {{ item.nome_servico }}?">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      {% empty %}
+        <div class="fe-empty-state">
+          <i class="bi bi-collection-play" style="font-size: 2rem;"></i>
+          <p class="mb-0 mt-2">Nenhuma despesa fixa cadastrada ainda.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

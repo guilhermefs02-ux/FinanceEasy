@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}Categorias — FinanceEasy{% endblock %}
+{% block content %}
+<h1 class="h5 fw-bold mb-1"><i class="bi bi-tags text-primary me-1"></i>Categorias</h1>
+<p class="text-muted small mb-3">
+  As categorias padrão valem para todo mundo. Crie as suas próprias para
+  organizar do seu jeito — elas só aparecem para você.
+</p>
+
+<div class="row g-3">
+  <div class="col-12 col-lg-5">
+    <div class="fe-card">
+      <p class="fw-semibold mb-3"><i class="bi bi-plus-circle me-1"></i>Nova categoria</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          {{ form.nome.label_tag }}
+          {{ form.nome }}
+          {% for erro in form.nome.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+        </div>
+        <div class="mb-3">
+          {{ form.tipo.label_tag }}
+          {{ form.tipo }}
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-8">
+            {{ form.icone.label_tag }}
+            {{ form.icone }}
+          </div>
+          <div class="col-4">
+            {{ form.cor.label_tag }}
+            {{ form.cor }}
+          </div>
+        </div>
+        <button type="submit" class="btn fe-btn-primary w-100">Criar categoria</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-7">
+    <p class="fw-semibold mb-2 small">Suas categorias — despesa</p>
+    <div class="d-flex flex-column gap-2 mb-3">
+      {% for c in minhas_despesa %}
+        <div class="fe-card d-flex justify-content-between align-items-center py-2">
+          <span><i class="bi {{ c.icone }} me-1" style="color: {{ c.cor }};"></i>{{ c.nome }}</span>
+          <form method="post" action="{% url 'transactions:excluir_categoria' c.pk %}" data-confirm="Excluir a categoria {{ c.nome }}?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+      {% empty %}
+        <p class="small text-muted">Você ainda não criou categorias de despesa próprias.</p>
+      {% endfor %}
+    </div>
+
+    <p class="fw-semibold mb-2 small">Suas categorias — receita</p>
+    <div class="d-flex flex-column gap-2 mb-3">
+      {% for c in minhas_receita %}
+        <div class="fe-card d-flex justify-content-between align-items-center py-2">
+          <span><i class="bi {{ c.icone }} me-1" style="color: {{ c.cor }};"></i>{{ c.nome }}</span>
+          <form method="post" action="{% url 'transactions:excluir_categoria' c.pk %}" data-confirm="Excluir a categoria {{ c.nome }}?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+      {% empty %}
+        <p class="small text-muted">Você ainda não criou categorias de receita próprias.</p>
+      {% endfor %}
+    </div>
+
+    <p class="fw-semibold mb-2 small text-muted">Categorias padrão (despesa)</p>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      {% for c in padrao_despesa %}
+        <span class="fe-chip-categoria"><i class="bi {{ c.icone }} me-1"></i>{{ c.nome }}</span>
+      {% endfor %}
+    </div>
+
+    <p class="fw-semibold mb-2 small text-muted">Categorias padrão (receita)</p>
+    <div class="d-flex flex-wrap gap-2">
+      {% for c in padrao_receita %}
+        <span class="fe-chip-categoria"><i class="bi {{ c.icone }} me-1"></i>{{ c.nome }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

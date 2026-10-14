@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+{% block title %}{% if tipo == "despesa" %}Lançar despesas em lote{% else %}Lançar receitas em lote{% endif %} — FinanceEasy{% endblock %}
+{% block content %}
+<h1 class="h5 fw-bold mb-1">
+  {% if tipo == "despesa" %}
+    <i class="bi bi-dash-circle text-danger me-1"></i>Lançar despesas em lote
+  {% else %}
+    <i class="bi bi-plus-circle text-success me-1"></i>Lançar receitas em lote
+  {% endif %}
+</h1>
+<p class="text-muted small mb-3">
+  Preencha quantas linhas quiser e salve tudo de uma vez. Linhas em branco são ignoradas.
+</p>
+
+<form method="post" novalidate id="form-lote">
+  {% csrf_token %}
+  {{ formset.management_form }}
+
+  {% if formset.non_form_errors %}
+    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+  {% endif %}
+
+  <div id="lote-rows" class="d-flex flex-column gap-2 mb-2">
+    {% for form in formset %}
+      <div class="fe-card fe-lote-row py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-md-2">
+            {{ form.valor.label_tag }}
+            {{ form.valor }}
+          </div>
+          <div class="col-6 col-md-3">
+            {{ form.categoria.label_tag }}
+            {{ form.categoria }}
+          </div>
+          {% if tipo == "despesa" %}
+            <div class="col-6 col-md-2">
+              {{ form.forma_pagamento.label_tag }}
+              {{ form.forma_pagamento }}
+            </div>
+          {% endif %}
+          <div class="col-6 col-md-2">
+            {{ form.data.label_tag }}
+            <div class="input-group input-group-sm">
+              {{ form.data }}
+              <button type="button" class="btn btn-outline-secondary fe-lote-hoje" tabindex="-1" title="Preencher com hoje">Hoje</button>
+            </div>
+          </div>
+          <div class="col-10 col-md-{% if tipo == 'despesa' %}2{% else %}4{% endif %}">
+            {{ form.descricao.label_tag }}
+            {{ form.descricao }}
+          </div>
+          <div class="col-2 col-md-1 text-end">
+            <button type="button" class="btn btn-sm btn-outline-danger fe-lote-remove" aria-label="Remover linha" title="Remover linha">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        {% for campo in form %}
+          {% for erro in campo.errors %}
+            <div class="text-danger small mt-1">{{ campo.label }}: {{ erro }}</div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <template id="empty-form-template">
+    <div class="fe-card fe-lote-row py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-6 col-md-2">
+          {{ formset.empty_form.valor.label_tag }}
+          {{ formset.empty_form.valor }}
+        </div>
+        <div class="col-6 col-md-3">
+          {{ formset.empty_form.categoria.label_tag }}
+          {{ formset.empty_form.categoria }}
+        </div>
+        {% if tipo == "despesa" %}
+          <div class="col-6 col-md-2">
+            {{ formset.empty_form.forma_pagamento.label_tag }}
+            {{ formset.empty_form.forma_pagamento }}
+          </div>
+        {% endif %}
+        <div class="col-6 col-md-2">
+          {{ formset.empty_form.data.label_tag }}
+          <div class="input-group input-group-sm">
+            {{ formset.empty_form.data }}
+            <button type="button" class="btn btn-outline-secondary fe-lote-hoje" tabindex="-1" title="Preencher com hoje">Hoje</button>
+          </div>
+        </div>
+        <div class="col-10 col-md-{% if tipo == 'despesa' %}2{% else %}4{% endif %}">
+          {{ formset.empty_form.descricao.label_tag }}
+          {{ formset.empty_form.descricao }}
+        </div>
+        <div class="col-2 col-md-1 text-end">
+          <button type="button" class="btn btn-sm btn-outline-danger fe-lote-remove" aria-label="Remover linha" title="Remover linha">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <button type="button" id="fe-lote-add-row" class="btn btn-sm btn-outline-secondary mb-3">
+    <i class="bi bi-plus-lg me-1"></i>Adicionar linha
+  </button>
+
+  <button type="submit" class="btn fe-btn-primary w-100 py-2">
+    <i class="bi bi-check2-all me-1"></i>Salvar tudo
+  </button>
+</form>
+{% endblock %}
