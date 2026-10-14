@@ -3,7 +3,9 @@
 {% block title %}Painel — FinanceEasy{% endblock %}
 
 {% block content %}
+
 <!-- Boas-vindas e Ação Principal -->
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="h4 fw-bold mb-0">Olá, {{ user.primeiro_nome }} 👋</h1>
@@ -15,15 +17,16 @@
 </div>
 
 <!-- Botão de Importação para Mobile -->
+
 <div class="d-md-none mb-3">
   <a href="{% url 'transactions:importar_extrato' %}" class="btn fe-btn-primary w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm">
     <i class="bi bi-cloud-upload"></i> Importar extrato do mês
   </a>
 </div>
 
-<!-- Cabeçalho financeiro tradicional -->
+<!-- Resumo financeiro -->
+
 <div class="row g-3 mb-3">
-  <!-- Card Receitas com gatilho do Modal -->
   <div class="col-12 col-md-4">
     <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalReceitas" style="cursor: pointer;">
       <p class="text-muted small mb-1"><i class="bi bi-arrow-down-circle text-success me-1"></i>Receitas do mês</p>
@@ -32,7 +35,6 @@
     </div>
   </div>
 
-  <!-- Card Despesas com gatilho do Modal -->
   <div class="col-12 col-md-4">
     <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalDespesas" style="cursor: pointer;">
       <p class="text-muted small mb-1"><i class="bi bi-arrow-up-circle text-danger me-1"></i>Despesas realizadas</p>
@@ -40,6 +42,7 @@
       <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
     </div>
   </div>
+
   <div class="col-12 col-md-4">
     <div class="fe-card h-100">
       <p class="text-muted small mb-1"><i class="bi bi-wallet2 me-1"></i>Saldo disponível</p>
@@ -48,7 +51,8 @@
   </div>
 </div>
 
-<!-- Bloco central da persona: Quanto Sobra com Segurança (UC08) -->
+<!-- Quanto sobra com segurança -->
+
 <div class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %} mb-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
@@ -60,7 +64,8 @@
   </div>
 </div>
 
-<!-- Carrossel de contas próximas -->
+<!-- Contas próximas -->
+
 <div class="fe-card mb-3">
   <p class="fw-semibold mb-3"><i class="bi bi-calendar-event me-1"></i>Contas próximas (7 dias)</p>
   {% if proximas_contas %}
@@ -83,8 +88,9 @@
   {% endif %}
 </div>
 
+<!-- Categorias e colchão para imprevistos -->
+
 <div class="row g-3">
-  <!-- Top 3 categorias -->
   <div class="col-12 col-lg-7">
     <div class="fe-card h-100">
       <p class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês</p>
@@ -106,7 +112,6 @@
     </div>
   </div>
 
-  <!-- Colchão de imprevistos -->
   <div class="col-12 col-lg-5">
     <div class="fe-card h-100 d-flex flex-column justify-content-between">
       <div>
@@ -129,7 +134,95 @@
   </div>
 </div>
 
-  <!-- HG Brasil Finance -->
+<!-- NOVA SEÇÃO: MINHAS METAS -->
+
+<div class="fe-card mt-3">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <p class="fw-semibold mb-1"><i class="bi bi-bullseye me-1"></i>Minhas metas</p>
+      <p class="small text-muted mb-0">Acompanhe o que você já guardou para cada objetivo.</p>
+    </div>
+    <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary">
+      <i class="bi bi-plus-circle me-1"></i>Gerenciar metas
+    </a>
+  </div>
+
+  <!-- Total acumulado em todas as metas -->
+
+  <div class="border rounded-3 p-3 mb-3" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+    <div class="d-flex align-items-center gap-3">
+      <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(25, 135, 84, 0.12); flex-shrink: 0;">
+        <i class="bi bi-piggy-bank text-success" style="font-size: 1.5rem;"></i>
+      </div>
+      <div>
+        <p class="small text-muted mb-1">Total acumulado em todos os objetivos</p>
+        <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_acumulado_objetivos|brl }}</p>
+      </div>
+    </div>
+  </div>
+
+{% if objetivos %}
+<div class="row g-3">
+{% for objetivo in objetivos %}
+<div class="col-12 col-md-6">
+<div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+<div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+<div>
+<p class="fw-semibold mb-1">
+{% if objetivo.is_colchao_padrao %}
+<i class="bi bi-umbrella me-1"></i>
+{% else %}
+<i class="bi bi-bullseye me-1"></i>
+{% endif %}
+{{ objetivo.nome }}
+</p>
+{% if objetivo.is_colchao_padrao %}
+<span class="badge bg-success-subtle text-success">Reserva de segurança</span>
+{% endif %}
+</div>
+<span class="small fw-semibold text-nowrap">{{ objetivo.percentual_concluido }}%</span>
+</div>
+
+        <div class="mb-2">
+          <p class="mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+            <span class="fw-bold">{{ objetivo.valor_acumulado|brl }}</span>
+            <span class="small text-muted">de {{ objetivo.valor_alvo|brl }}</span>
+          </p>
+        </div>
+
+        <div class="fe-progress mb-2" role="progressbar" aria-label="Progresso de {{ objetivo.nome }}" aria-valuenow="{{ objetivo.percentual_concluido }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+        </div>
+
+        {% if objetivo.percentual_concluido >= 100 %}
+          <p class="small text-success mb-0"><i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!</p>
+        {% else %}
+          <p class="small text-muted mb-0">
+            {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
+              Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_alvo|floatformat:2|add:"0"|brl }}</span> para atingir a meta.
+            {% else %}
+              Meta concluída!
+            {% endif %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center py-4">
+<i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
+<p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
+<p class="small text-muted mb-3">Crie sua primeira meta e acompanhe seu progresso por aqui.</p>
+<a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar minha primeira meta</a>
+</div>
+{% endif %}
+
+</div>
+
+<!-- Mercado agora -->
+
 <div class="fe-card mt-3">
   <p class="fw-semibold mb-3"><i class="bi bi-graph-up-arrow me-1"></i>Mercado agora</p>
   {% if hgbrasil.disponivel %}
@@ -163,8 +256,8 @@
   {% endif %}
 </div>
 
-
 <!-- MODAL RECEITAS -->
+
 <div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
@@ -205,6 +298,7 @@
 </div>
 
 <!-- MODAL DESPESAS -->
+
 <div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
