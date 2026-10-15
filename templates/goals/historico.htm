@@ -21,6 +21,7 @@
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
       <div>
         <p class="fw-semibold mb-1">{{ objetivo.nome }}</p>
+
         <p class="small text-muted mb-0">
           Concluído em:
           {% if objetivo.concluido_em %}
@@ -29,6 +30,7 @@
             Data não disponível
           {% endif %}
         </p>
+
         <p class="small text-muted mb-0">
           Arquivado em:
           {% if objetivo.arquivado_em %}
@@ -52,7 +54,10 @@
     </p>
 
     <div class="fe-progress mb-3">
-      <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+      <div
+        class="fe-progress-bar"
+        style="width: {{ objetivo.percentual_concluido }}%;"
+      ></div>
     </div>
 
     <details>
@@ -67,6 +72,7 @@
               <th class="text-end">Valor</th>
             </tr>
           </thead>
+
           <tbody>
             {% for contribuicao in objetivo.contribuicoes.all %}
               <tr>
@@ -94,13 +100,15 @@
               </tr>
             {% endfor %}
 
-            {% if not objetivo.contribuicoes.exists and not objetivo.retiradas.exists %}
-              <tr>
-                <td colspan="3" class="text-center text-muted small">
-                  Nenhuma movimentação registrada.
-                </td>
-              </tr>
-            {% endif %}
+            {% with total_contribuicoes=objetivo.contribuicoes.count total_retiradas=objetivo.retiradas.count %}
+              {% if total_contribuicoes == 0 and total_retiradas == 0 %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted small">
+                    Nenhuma movimentação registrada.
+                  </td>
+                </tr>
+              {% endif %}
+            {% endwith %}
           </tbody>
         </table>
       </div>
