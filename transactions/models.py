@@ -1,386 +1,298 @@
-import hashlib
+from datetime import date, timedelta
+from decimal import Decimal
 
-from django.conf import settings
-from django.db import models
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from django.shortcuts import redirect, render
 
+from goals.models import Goal
+from transactions.models import RecurringBill, Transaction
 
-class CategoryQuerySet(models.QuerySet):
-    def para_usuario(self, user, tipo=None):
-        """Categorias padrão (globais) + as pessoais deste usuário."""
-        qs = self.filter(models.Q(usuario__isnull=True) | models.Q(usuario=user))
-        if tipo:
-            qs = qs.filter(tipo=tipo)
-        return qs
+from .services.hgbrasil import obter_dados_financeiros
 
 
-class Category(models.Model):
-    """Categorias de receita/despesa (RF04-RF10)."""
+def _inicio_fim_mes(referencia: date):
+    inicio = referencia.replace(day=1)
 
-    class Tipo(models.TextChoices):
-        RECEITA = "receita", "Receita"
-        DESPESA = "despesa", "Despesa"
+    if referencia.month == 12:
+        fim = date(referencia.year + 1, 1, 1) - timedelta(days=1)
+    else:
+        fim = date(referencia.year, referencia.month + 1, 1) - timedelta(days=1)
 
-    nome = models.CharField(max_length=60)
-    tipo = models.CharField(max_length=10, choices=Tipo.choices)
-    icone = models.CharField(
-        max_length=40,
-        default="bi-tag",
-        help_text="Classe do Bootstrap Icons",
-    )
-    cor = models.CharField(max_length=20, default="#6c63ff")
-    is_padrao = models.BooleanField(default=True)
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="categorias_personalizadas",
-        help_text=(
-            "Em branco = categoria padrão (todos veem). "
-            "Preenchido = categoria pessoal, só deste usuário."
-        ),
-    )
-
-    objects = CategoryQuerySet.as_manager()
-
-    class Meta:
-        verbose_name_plural = "categorias"
-        ordering = ["tipo", "nome"]
-        unique_together = ["nome", "tipo", "usuario"]
-
-    def __str__(self):
-        return self.nome
+    return inicio, fim
 
 
-class CategoryBudget(models.Model):
-    """UC06 — teto mensal definido pelo usuário para uma categoria de despesa."""
+def _data_valida_vencimento(ano, mes, dia):
+    """Ajusta o dia para o último dia do mês quando necessário."""
+    if mes == 12:
+        primeiro_dia_mes_seguinte = date(ano + 1, 1, 1)
+    else:
+        primeiro_dia_mes_seguinte = date(ano, mes + 1, 1)
 
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="orcamentos",
-    )
-    categoria = models.ForeignKey(
-        Category,
-        on_delete=models.CASCADE,
-        related_name="orcamentos",
-    )
-    teto_mensal = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        unique_together = ["usuario", "categoria"]
-
-    def __str__(self):
-        return f"{self.categoria} até R$ {self.teto_mensal}/mês"
+    ultimo_dia = (primeiro_dia_mes_seguinte - timedelta(days=1)).day
+    return date(ano, mes, min(dia, ultimo_dia))
 
 
-class ImportBatch(models.Model):
-    """UC04 — um upload de extrato/fatura."""
+def _proximo_vencimento_conta(conta, hoje):
+    """Calcula a próxima data de vencimento de uma conta fixa."""
+    if conta.periodicidade == RecurringBill.Periodicidade.ANUAL:
+        mes = conta.mes_vencimento
 
-    class Formato(models.TextChoices):
-        OFX = "ofx", "OFX"
-        CSV = "csv", "CSV"
-        PDF = "pdf", "PDF"
+        # Não inventa um vencimento para contas anuais sem mês cadastrado.
+        if not mes:
+            return None
 
-    class TipoConta(models.TextChoices):
-        CORRENTE = "corrente", "Conta corrente"
-        FATURA_CARTAO = "fatura_cartao", "Fatura de cartão de crédito"
+        vencimento = _data_valida_vencimento(
+            hoje.year,
+            mes,
+            conta.dia_vencimento,
+        )
 
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="importacoes",
-    )
-    arquivo_nome = models.CharField(max_length=255)
-    formato = models.CharField(max_length=5, choices=Formato.choices)
-    tipo_conta = models.CharField(
-        max_length=15,
-        choices=TipoConta.choices,
-        default=TipoConta.CORRENTE,
-    )
-    cartao_divida = models.ForeignKey(
-        "debts.Debt",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="importacoes",
-    )
-    importado_em = models.DateTimeField(auto_now_add=True)
-    total_linhas = models.PositiveIntegerField(default=0)
-    total_novas = models.PositiveIntegerField(default=0)
-    total_duplicadas = models.PositiveIntegerField(default=0)
-    concluido = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["-importado_em"]
-
-    def __str__(self):
-        return f"{self.arquivo_nome} ({self.get_formato_display()})"
-
-
-class Transaction(models.Model):
-    """RF04/RF05 — receitas e despesas, manuais ou importadas."""
-
-    class Tipo(models.TextChoices):
-        RECEITA = "receita", "Receita"
-        DESPESA = "despesa", "Despesa"
-
-    class FormaPagamento(models.TextChoices):
-        DINHEIRO = "dinheiro", "Dinheiro"
-        PIX = "pix", "PIX"
-        DEBITO = "debito", "Débito"
-        CREDITO = "credito", "Crédito"
-        VALE = "vale", "Vale"
-
-    class Origem(models.TextChoices):
-        MANUAL = "manual", "Lançamento manual"
-        IMPORTADO = "importado", "Importado de extrato"
-
-    class Status(models.TextChoices):
-        CONFIRMADA = "confirmada", "Confirmada"
-        PENDENTE = "pendente_conciliacao", "Pendente de conciliação"
-
-    class TipoRecorrencia(models.TextChoices):
-        UNICA = "UNICA", "Única / Pontual"
-        FIXA = "FIXA", "Fixa / Recorrente"
-        PARCELADA = "PARCELADA", "Parcelada"
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="transacoes",
-    )
-    tipo = models.CharField(max_length=10, choices=Tipo.choices)
-    valor = models.DecimalField(max_digits=10, decimal_places=2)
-    data = models.DateField()
-    categoria = models.ForeignKey(
-        Category,
-        on_delete=models.PROTECT,
-        related_name="transacoes",
-        null=True,
-        blank=True,
-    )
-    descricao = models.CharField(max_length=255, blank=True)
-    forma_pagamento = models.CharField(
-        max_length=10,
-        choices=FormaPagamento.choices,
-        blank=True,
-    )
-    origem = models.CharField(
-        max_length=10,
-        choices=Origem.choices,
-        default=Origem.MANUAL,
-    )
-    status = models.CharField(
-        max_length=25,
-        choices=Status.choices,
-        default=Status.CONFIRMADA,
-    )
-    import_batch = models.ForeignKey(
-        ImportBatch,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="transacoes",
-    )
-    descricao_origem_banco = models.CharField(
-        max_length=255,
-        blank=True,
-        help_text="Texto bruto vindo do extrato, antes da categorização",
-    )
-    categoria_sugerida_confianca = models.CharField(
-        max_length=10,
-        blank=True,
-        choices=[("alta", "Alta"), ("baixa", "Baixa")],
-        help_text=(
-            "Usado na tela de conciliação (UC05) "
-            "para o marcador verde/amarelo"
-        ),
-    )
-    hash_dedup = models.CharField(max_length=64, blank=True, db_index=True)
-    debito_fatura_cartao = models.ForeignKey(
-        "debts.Debt",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="transacoes_fatura",
-    )
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
-
-    tipo_recorrencia = models.CharField(
-        max_length=10,
-        choices=TipoRecorrencia.choices,
-        default=TipoRecorrencia.UNICA,
-        verbose_name="Tipo de Recorrência",
-    )
-    parcela_atual = models.PositiveIntegerField(
-        default=1,
-        verbose_name="Parcela Atual",
-    )
-    total_parcelas = models.PositiveIntegerField(
-        default=1,
-        verbose_name="Total de Parcelas",
-    )
-    grupo_recorrencia_id = models.UUIDField(
-        null=True,
-        blank=True,
-        db_index=True,
-        verbose_name="ID do Grupo de Recorrência",
-    )
-
-    @property
-    def identificador_parcela(self):
-        """Retorna a identificação da parcela ou da recorrência."""
-        if (
-            self.tipo_recorrencia == self.TipoRecorrencia.PARCELADA
-            and self.total_parcelas > 1
-        ):
-            return f"{self.parcela_atual}/{self.total_parcelas}"
-
-        if self.tipo_recorrencia == self.TipoRecorrencia.FIXA:
-            return "Fixa"
-
-        return ""
-
-    class Meta:
-        ordering = ["-data", "-criado_em"]
-        indexes = [models.Index(fields=["usuario", "data"])]
-
-    def __str__(self):
-        sinal = "+" if self.tipo == self.Tipo.RECEITA else "-"
-        return f"{sinal}R$ {self.valor} em {self.data:%d/%m/%Y}"
-
-    @staticmethod
-    def calcular_hash(usuario_id, data, valor, descricao):
-        base = f"{usuario_id}|{data}|{valor}|{(descricao or '').strip().lower()}"
-        return hashlib.sha256(base.encode("utf-8")).hexdigest()
-
-    def save(self, *args, **kwargs):
-        if not self.hash_dedup:
-            self.hash_dedup = self.calcular_hash(
-                self.usuario_id,
-                self.data,
-                self.valor,
-                self.descricao_origem_banco or self.descricao,
+        if vencimento < hoje:
+            vencimento = _data_valida_vencimento(
+                hoje.year + 1,
+                mes,
+                conta.dia_vencimento,
             )
-        super().save(*args, **kwargs)
 
+        return vencimento
 
-class RecurringBill(models.Model):
-    """UC07 — contas fixas e assinaturas recorrentes."""
-
-    class Periodicidade(models.TextChoices):
-        MENSAL = "mensal", "Mensal"
-        ANUAL = "anual", "Anual"
-
-    MESES = [
-        (1, "Janeiro"),
-        (2, "Fevereiro"),
-        (3, "Março"),
-        (4, "Abril"),
-        (5, "Maio"),
-        (6, "Junho"),
-        (7, "Julho"),
-        (8, "Agosto"),
-        (9, "Setembro"),
-        (10, "Outubro"),
-        (11, "Novembro"),
-        (12, "Dezembro"),
-    ]
-
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="recorrencias",
+    vencimento = _data_valida_vencimento(
+        hoje.year,
+        hoje.month,
+        conta.dia_vencimento,
     )
-    nome_servico = models.CharField(max_length=120)
-    categoria = models.ForeignKey(
-        Category,
-        on_delete=models.PROTECT,
-        related_name="recorrencias",
-    )
-    valor = models.DecimalField(max_digits=10, decimal_places=2)
-    periodicidade = models.CharField(
-        max_length=10,
-        choices=Periodicidade.choices,
-        default=Periodicidade.MENSAL,
-    )
-    mes_vencimento = models.PositiveSmallIntegerField(
-        choices=MESES,
-        null=True,
-        blank=True,
-        help_text="Mês do vencimento, utilizado nas despesas anuais.",
-    )
-    dia_vencimento = models.PositiveSmallIntegerField(
-        help_text="Dia do mês (1-31)",
-    )
-    ativo = models.BooleanField(default=True)
-    criado_em = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ["dia_vencimento"]
+    if vencimento < hoje:
+        if hoje.month == 12:
+            ano_seguinte, mes_seguinte = hoje.year + 1, 1
+        else:
+            ano_seguinte, mes_seguinte = hoje.year, hoje.month + 1
 
-    def __str__(self):
-        return (
-            f"{self.nome_servico} — R$ {self.valor} "
-            f"({self.get_periodicidade_display()})"
+        vencimento = _data_valida_vencimento(
+            ano_seguinte,
+            mes_seguinte,
+            conta.dia_vencimento,
         )
 
-    @property
-    def valor_mensalizado(self):
-        if self.periodicidade == self.Periodicidade.ANUAL:
-            return round(self.valor / 12, 2)
-        return self.valor
-
-    @property
-    def valor_anualizado(self):
-        if self.periodicidade == self.Periodicidade.ANUAL:
-            return self.valor
-        return self.valor * 12
+    return vencimento
 
 
-class RecurringBillPayment(models.Model):
-    """Registra cada vencimento e o pagamento de uma conta fixa."""
+def _proximas_contas(user, dias_janela=7):
+    """Busca contas fixas e parcelas de dívidas próximas do vencimento."""
+    hoje = date.today()
+    limite = hoje + timedelta(days=dias_janela)
+    itens = []
 
-    class Status(models.TextChoices):
-        PENDENTE = "pendente", "Pendente"
-        PAGO = "pago", "Pago"
+    for conta in user.recorrencias.filter(ativo=True):
+        vencimento = _proximo_vencimento_conta(conta, hoje)
 
-    conta = models.ForeignKey(
-        RecurringBill,
-        on_delete=models.CASCADE,
-        related_name="pagamentos",
-    )
-    data_vencimento = models.DateField()
-    valor = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(
-        max_length=10,
-        choices=Status.choices,
-        default=Status.PENDENTE,
-    )
-    pago_em = models.DateTimeField(null=True, blank=True)
-    transacao = models.ForeignKey(
-        Transaction,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="pagamentos_contas_fixas",
-    )
-    criado_em = models.DateTimeField(auto_now_add=True)
+        if vencimento is None or not hoje <= vencimento <= limite:
+            continue
 
-    class Meta:
-        ordering = ["data_vencimento"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["conta", "data_vencimento"],
-                name="unique_conta_fixa_vencimento",
-            ),
-        ]
+        # A conta anual deve exibir o valor integral do vencimento.
+        # A mensal exibe o valor mensal cadastrado.
+        valor_vencimento = conta.valor
 
-    def __str__(self):
-        return (
-            f"{self.conta.nome_servico} — "
-            f"{self.data_vencimento:%d/%m/%Y} — "
-            f"{self.get_status_display()}"
+        itens.append(
+            {
+                "tipo": "conta",
+                "nome": conta.nome_servico,
+                "valor": valor_vencimento,
+                "vencimento": vencimento,
+                "categoria": conta.categoria,
+            }
         )
+
+    # Mantém o cálculo de vencimentos das dívidas separado das contas fixas.
+    from core.services.due_date_scan import _proxima_data_vencimento
+
+    for divida in user.dividas.filter(quitada=False):
+        vencimento = _proxima_data_vencimento(
+            divida.dia_vencimento,
+            hoje,
+        )
+
+        if hoje <= vencimento <= limite:
+            itens.append(
+                {
+                    "tipo": "divida",
+                    "nome": divida.credor,
+                    "valor": divida.valor_parcela,
+                    "vencimento": vencimento,
+                    "categoria": None,
+                }
+            )
+
+    itens.sort(key=lambda item: item["vencimento"])
+    return itens
+
+
+@login_required
+def painel(request):
+    hoje = date.today()
+    inicio_mes, fim_mes = _inicio_fim_mes(hoje)
+
+    transacoes_mes = Transaction.objects.filter(
+        usuario=request.user,
+        status=Transaction.Status.CONFIRMADA,
+        data__range=[inicio_mes, fim_mes],
+    )
+
+    total_receitas = (
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.RECEITA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0")
+    )
+
+    total_despesas = (
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.DESPESA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0")
+    )
+
+    receitas_confirmadas = (
+        Transaction.objects.filter(
+            usuario=request.user,
+            status=Transaction.Status.CONFIRMADA,
+            tipo=Transaction.Tipo.RECEITA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0")
+    )
+
+    despesas_confirmadas = (
+        Transaction.objects.filter(
+            usuario=request.user,
+            status=Transaction.Status.CONFIRMADA,
+            tipo=Transaction.Tipo.DESPESA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0")
+    )
+
+    saldo_disponivel = receitas_confirmadas - despesas_confirmadas
+
+    proximas_contas = _proximas_contas(
+        request.user,
+        dias_janela=7,
+    )
+
+    total_a_vencer_7_dias = sum(
+        (item["valor"] for item in proximas_contas),
+        start=Decimal("0"),
+    )
+
+    sobra_segura = saldo_disponivel - total_a_vencer_7_dias
+
+    top_categorias = (
+        transacoes_mes.filter(
+            tipo=Transaction.Tipo.DESPESA,
+        )
+        .values(
+            "categoria__nome",
+            "categoria__cor",
+            "categoria__icone",
+        )
+        .annotate(total=Sum("valor"))
+        .order_by("-total")[:3]
+    )
+
+    maior_categoria_total = max(
+        (categoria["total"] for categoria in top_categorias),
+        default=Decimal("0"),
+    )
+
+    dados_hgbrasil = obter_dados_financeiros()
+
+    colchao = Goal.objects.filter(
+        usuario=request.user,
+        is_colchao_padrao=True,
+    ).first()
+
+    objetivos = list(
+        Goal.objects.filter(
+            usuario=request.user,
+        ).order_by(
+            "-is_colchao_padrao",
+            "criado_em",
+        )
+    )
+
+    total_acumulado_objetivos = Decimal("0")
+
+    for objetivo in objetivos:
+        acumulado = objetivo.valor_acumulado
+
+        objetivo.valor_restante = max(
+            objetivo.valor_alvo - acumulado,
+            Decimal("0"),
+        )
+
+        objetivo._acumulado_ordem = acumulado
+        total_acumulado_objetivos += acumulado
+
+    objetivos.sort(
+        key=lambda objetivo: (
+            not objetivo.is_colchao_padrao,
+            -objetivo._acumulado_ordem,
+            objetivo.criado_em,
+        )
+    )
+
+    receitas_detalhes = Transaction.objects.filter(
+        usuario=request.user,
+        tipo=Transaction.Tipo.RECEITA,
+        data__range=[inicio_mes, fim_mes],
+        status=Transaction.Status.CONFIRMADA,
+    ).order_by("-data")
+
+    despesas_detalhes = Transaction.objects.filter(
+        usuario=request.user,
+        tipo=Transaction.Tipo.DESPESA,
+        data__range=[inicio_mes, fim_mes],
+        status=Transaction.Status.CONFIRMADA,
+    ).order_by("-data")
+
+    contexto = {
+        "total_receitas": total_receitas,
+        "total_despesas": total_despesas,
+        "saldo_disponivel": saldo_disponivel,
+        "sobra_segura": sobra_segura,
+        "proximas_contas": proximas_contas,
+        "top_categorias": top_categorias,
+        "maior_categoria_total": maior_categoria_total,
+        "hgbrasil": dados_hgbrasil,
+        "colchao": colchao,
+        "objetivos": objetivos,
+        "total_acumulado_objetivos": total_acumulado_objetivos,
+        "mes_referencia": hoje,
+        "receitas_detalhes": receitas_detalhes,
+        "despesas_detalhes": despesas_detalhes,
+    }
+
+    return render(
+        request,
+        "dashboard/painel.html",
+        contexto,
+    )
+
+
+@login_required
+def alternar_privacidade(request):
+    """FA01 — Modo Privacidade ('Olho Fechado'), RNF13."""
+    if request.method == "POST":
+        atual = request.session.get("privacy_mode_on", False)
+        request.session["privacy_mode_on"] = not atual
+
+    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
+    return redirect(proximo)
+
+
+@login_required
+def marcar_notificacoes_lidas(request):
+    if request.method == "POST":
+        request.user.notificacoes.filter(lida=False).update(lida=True)
+
+    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
+    return redirect(proximo)
