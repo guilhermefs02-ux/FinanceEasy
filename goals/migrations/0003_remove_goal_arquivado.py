@@ -4,7 +4,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("goals", "0002_goal_arquivado"),
+        ("goals", "0002_goalwithdrawal_arquivado_em"),
     ]
 
     operations = [
