@@ -14,12 +14,7 @@ class CategoryQuerySet(models.QuerySet):
 
 
 class Category(models.Model):
-    """Categorias de receita/despesa (RF04-RF10). Os registros padrão
-    (``usuario=None``) são criados pela migração de dados (veja
-    transactions/migrations) e ficam disponíveis para todos os usuários.
-    Um usuário também pode criar categorias próprias (``usuario`` preenchido),
-    visíveis só para ele, além das padrão.
-    """
+    """Categorias de receita/despesa (RF04-RF10)."""
 
     class Tipo(models.TextChoices):
         RECEITA = "receita", "Receita"
@@ -28,7 +23,9 @@ class Category(models.Model):
     nome = models.CharField(max_length=60)
     tipo = models.CharField(max_length=10, choices=Tipo.choices)
     icone = models.CharField(
-        max_length=40, default="bi-tag", help_text="Classe do Bootstrap Icons"
+        max_length=40,
+        default="bi-tag",
+        help_text="Classe do Bootstrap Icons",
     )
     cor = models.CharField(max_length=20, default="#6c63ff")
     is_padrao = models.BooleanField(default=True)
@@ -38,7 +35,10 @@ class Category(models.Model):
         null=True,
         blank=True,
         related_name="categorias_personalizadas",
-        help_text="Em branco = categoria padrão (todos veem). Preenchido = categoria pessoal, só deste usuário.",
+        help_text=(
+            "Em branco = categoria padrão (todos veem). "
+            "Preenchido = categoria pessoal, só deste usuário."
+        ),
     )
 
     objects = CategoryQuerySet.as_manager()
@@ -55,8 +55,16 @@ class Category(models.Model):
 class CategoryBudget(models.Model):
     """UC06 — teto mensal definido pelo usuário para uma categoria de despesa."""
 
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orcamentos")
-    categoria = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="orcamentos")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="orcamentos",
+    )
+    categoria = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="orcamentos",
+    )
     teto_mensal = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
@@ -78,12 +86,24 @@ class ImportBatch(models.Model):
         CORRENTE = "corrente", "Conta corrente"
         FATURA_CARTAO = "fatura_cartao", "Fatura de cartão de crédito"
 
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="importacoes")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="importacoes",
+    )
     arquivo_nome = models.CharField(max_length=255)
     formato = models.CharField(max_length=5, choices=Formato.choices)
-    tipo_conta = models.CharField(max_length=15, choices=TipoConta.choices, default=TipoConta.CORRENTE)
+    tipo_conta = models.CharField(
+        max_length=15,
+        choices=TipoConta.choices,
+        default=TipoConta.CORRENTE,
+    )
     cartao_divida = models.ForeignKey(
-        "debts.Debt", null=True, blank=True, on_delete=models.SET_NULL, related_name="importacoes"
+        "debts.Debt",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="importacoes",
     )
     importado_em = models.DateTimeField(auto_now_add=True)
     total_linhas = models.PositiveIntegerField(default=0)
@@ -99,8 +119,7 @@ class ImportBatch(models.Model):
 
 
 class Transaction(models.Model):
-    """RF04/RF05 — receitas e despesas, manuais ou importadas (UC02, UC03,
-    UC04, UC05)."""
+    """RF04/RF05 — receitas e despesas, manuais ou importadas."""
 
     class Tipo(models.TextChoices):
         RECEITA = "receita", "Receita"
@@ -120,40 +139,71 @@ class Transaction(models.Model):
     class Status(models.TextChoices):
         CONFIRMADA = "confirmada", "Confirmada"
         PENDENTE = "pendente_conciliacao", "Pendente de conciliação"
-    
-    class TipoRecorrencia(models.TextChoices):
-        UNICA = 'UNICA', 'Única / Pontual'
-        FIXA = 'FIXA', 'Fixa / Recorrente'
-        PARCELADA = 'PARCELADA', 'Parcelada'
 
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transacoes")
+    class TipoRecorrencia(models.TextChoices):
+        UNICA = "UNICA", "Única / Pontual"
+        FIXA = "FIXA", "Fixa / Recorrente"
+        PARCELADA = "PARCELADA", "Parcelada"
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="transacoes",
+    )
     tipo = models.CharField(max_length=10, choices=Tipo.choices)
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     data = models.DateField()
     categoria = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name="transacoes", null=True, blank=True
+        Category,
+        on_delete=models.PROTECT,
+        related_name="transacoes",
+        null=True,
+        blank=True,
     )
     descricao = models.CharField(max_length=255, blank=True)
     forma_pagamento = models.CharField(
-        max_length=10, choices=FormaPagamento.choices, blank=True
+        max_length=10,
+        choices=FormaPagamento.choices,
+        blank=True,
     )
-    origem = models.CharField(max_length=10, choices=Origem.choices, default=Origem.MANUAL)
-    status = models.CharField(max_length=25, choices=Status.choices, default=Status.CONFIRMADA)
+    origem = models.CharField(
+        max_length=10,
+        choices=Origem.choices,
+        default=Origem.MANUAL,
+    )
+    status = models.CharField(
+        max_length=25,
+        choices=Status.choices,
+        default=Status.CONFIRMADA,
+    )
     import_batch = models.ForeignKey(
-        ImportBatch, null=True, blank=True, on_delete=models.SET_NULL, related_name="transacoes"
+        ImportBatch,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transacoes",
     )
     descricao_origem_banco = models.CharField(
-        max_length=255, blank=True, help_text="Texto bruto vindo do extrato, antes da categorização"
+        max_length=255,
+        blank=True,
+        help_text="Texto bruto vindo do extrato, antes da categorização",
     )
     categoria_sugerida_confianca = models.CharField(
         max_length=10,
         blank=True,
         choices=[("alta", "Alta"), ("baixa", "Baixa")],
-        help_text="Usado na tela de conciliação (UC05) para o marcador verde/amarelo",
+        help_text=(
+            "Usado na tela de conciliação (UC05) "
+            "para o marcador verde/amarelo"
+        ),
     )
     hash_dedup = models.CharField(max_length=64, blank=True, db_index=True)
     debito_fatura_cartao = models.ForeignKey(
-        "debts.Debt", null=True, blank=True, on_delete=models.SET_NULL, related_name="transacoes_fatura"
+        "debts.Debt",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transacoes_fatura",
     )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -162,24 +212,21 @@ class Transaction(models.Model):
         max_length=10,
         choices=TipoRecorrencia.choices,
         default=TipoRecorrencia.UNICA,
-        verbose_name='Tipo de Recorrência',
+        verbose_name="Tipo de Recorrência",
     )
-
     parcela_atual = models.PositiveIntegerField(
         default=1,
-        verbose_name='Parcela Atual',
+        verbose_name="Parcela Atual",
     )
-
     total_parcelas = models.PositiveIntegerField(
         default=1,
-        verbose_name='Total de Parcelas',
+        verbose_name="Total de Parcelas",
     )
-
     grupo_recorrencia_id = models.UUIDField(
         null=True,
         blank=True,
         db_index=True,
-        verbose_name='ID do Grupo de Recorrência',
+        verbose_name="ID do Grupo de Recorrência",
     )
 
     @property
@@ -189,11 +236,11 @@ class Transaction(models.Model):
             self.tipo_recorrencia == self.TipoRecorrencia.PARCELADA
             and self.total_parcelas > 1
         ):
-            return f'{self.parcela_atual}/{self.total_parcelas}'
-        
+            return f"{self.parcela_atual}/{self.total_parcelas}"
+
         if self.tipo_recorrencia == self.TipoRecorrencia.FIXA:
-            return 'Fixa'
-        
+            return "Fixa"
+
         return ""
 
     class Meta:
@@ -212,25 +259,62 @@ class Transaction(models.Model):
     def save(self, *args, **kwargs):
         if not self.hash_dedup:
             self.hash_dedup = self.calcular_hash(
-                self.usuario_id, self.data, self.valor, self.descricao_origem_banco or self.descricao
+                self.usuario_id,
+                self.data,
+                self.valor,
+                self.descricao_origem_banco or self.descricao,
             )
         super().save(*args, **kwargs)
 
 
 class RecurringBill(models.Model):
-    """UC07 — contas fixas e assinaturas recorrentes. Também cobre RF03
-    (despesas essenciais de moradia) quando a categoria é Moradia/Casa."""
+    """UC07 — contas fixas e assinaturas recorrentes."""
 
     class Periodicidade(models.TextChoices):
         MENSAL = "mensal", "Mensal"
         ANUAL = "anual", "Anual"
 
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="recorrencias")
+    MESES = [
+        (1, "Janeiro"),
+        (2, "Fevereiro"),
+        (3, "Março"),
+        (4, "Abril"),
+        (5, "Maio"),
+        (6, "Junho"),
+        (7, "Julho"),
+        (8, "Agosto"),
+        (9, "Setembro"),
+        (10, "Outubro"),
+        (11, "Novembro"),
+        (12, "Dezembro"),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recorrencias",
+    )
     nome_servico = models.CharField(max_length=120)
-    categoria = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="recorrencias")
+    categoria = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="recorrencias",
+    )
     valor = models.DecimalField(max_digits=10, decimal_places=2)
-    periodicidade = models.CharField(max_length=10, choices=Periodicidade.choices, default=Periodicidade.MENSAL)
-    dia_vencimento = models.PositiveSmallIntegerField(help_text="Dia do mês (1-31)")
+    periodicidade = models.CharField(
+        max_length=10,
+        choices=Periodicidade.choices,
+        default=Periodicidade.MENSAL,
+    )
+    mes_vencimento = models.PositiveSmallIntegerField(
+        choices=MESES,
+        null=True,
+        blank=True,
+        help_text="Mês do vencimento, utilizado nas despesas anuais.",
+    )
+    dia_vencimento = models.PositiveSmallIntegerField(
+        help_text="Dia do mês (1-31)",
+    )
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -238,7 +322,10 @@ class RecurringBill(models.Model):
         ordering = ["dia_vencimento"]
 
     def __str__(self):
-        return f"{self.nome_servico} — R$ {self.valor} ({self.get_periodicidade_display()})"
+        return (
+            f"{self.nome_servico} — R$ {self.valor} "
+            f"({self.get_periodicidade_display()})"
+        )
 
     @property
     def valor_mensalizado(self):
@@ -251,3 +338,49 @@ class RecurringBill(models.Model):
         if self.periodicidade == self.Periodicidade.ANUAL:
             return self.valor
         return self.valor * 12
+
+
+class RecurringBillPayment(models.Model):
+    """Registra cada vencimento e o pagamento de uma conta fixa."""
+
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        PAGO = "pago", "Pago"
+
+    conta = models.ForeignKey(
+        RecurringBill,
+        on_delete=models.CASCADE,
+        related_name="pagamentos",
+    )
+    data_vencimento = models.DateField()
+    valor = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PENDENTE,
+    )
+    pago_em = models.DateTimeField(null=True, blank=True)
+    transacao = models.ForeignKey(
+        Transaction,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pagamentos_contas_fixas",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["data_vencimento"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["conta", "data_vencimento"],
+                name="unique_conta_fixa_vencimento",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.conta.nome_servico} — "
+            f"{self.data_vencimento:%d/%m/%Y} — "
+            f"{self.get_status_display()}"
+        )
