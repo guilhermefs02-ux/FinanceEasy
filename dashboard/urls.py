@@ -5,8 +5,16 @@ from . import views
 app_name = "dashboard"
 
 urlpatterns = [
-    path("", views.painel, name="painel"),
-    path("privacidade/", views.alternar_privacidade, name="alternar_privacidade"),
+    path(
+        "",
+        views.painel,
+        name="painel",
+    ),
+    path(
+        "privacidade/",
+        views.alternar_privacidade,
+        name="alternar_privacidade",
+    ),
     path(
         "notificacoes/marcar-lidas/",
         views.marcar_notificacoes_lidas,
