@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 {% load finance_extras %}
 {% block title %}Painel — FinanceEasy{% endblock %}
@@ -113,20 +114,20 @@
   </div>
 </div>
 
-<!-- Minhas metas -->
+<!-- Meus objetivos -->
 
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-      <p class="fw-semibold mb-1"><i class="bi bi-bullseye me-1"></i>Minhas metas</p>
+      <p class="fw-semibold mb-1"><i class="bi bi-bullseye me-1"></i>Meus objetivos</p>
       <p class="small text-muted mb-0">Acompanhe o que você já guardou para cada objetivo.</p>
     </div>
     <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary">
-      <i class="bi bi-plus-circle me-1"></i>Gerenciar metas
+      <i class="bi bi-plus-circle me-1"></i>Gerenciar objetivos
     </a>
   </div>
 
-  <!-- Total acumulado em todas as metas -->
+  <!-- Total acumulado em todos os objetivos -->
 
   <div class="border rounded-3 p-3 mb-3" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
     <div class="d-flex align-items-center gap-3">
@@ -142,7 +143,7 @@
 
   {% if objetivos %}
     <div class="row g-3">
-      {% for objetivo in objetivos %}
+      {% for objetivo in objetivos|slice:":4" %}
         <div class="col-12 col-md-6">
           <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -178,9 +179,9 @@
             {% else %}
               <p class="small text-muted mb-0">
                 {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
-                  Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_restante|brl }}</span> para atingir a meta.
+                  Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_restante|brl }}</span> para atingir o objetivo.
                 {% else %}
-                  Meta concluída!
+                  Objetivo concluído!
                 {% endif %}
               </p>
             {% endif %}
@@ -188,12 +189,23 @@
         </div>
       {% endfor %}
     </div>
+
+    <!-- Ver todos os objetivos: aparece somente quando existem mais de 4 -->
+
+    {% if objetivos|length > 4 %}
+      <div class="text-center mt-3">
+        <a href="{% url 'goals:lista' %}" class="btn btn-outline-primary btn-sm">
+          Ver todos os objetivos <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+      </div>
+    {% endif %}
+
   {% else %}
     <div class="text-center py-4">
       <i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
       <p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
-      <p class="small text-muted mb-3">Crie sua primeira meta e acompanhe seu progresso por aqui.</p>
-      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar minha primeira meta</a>
+      <p class="small text-muted mb-3">Crie seu primeiro objetivo e acompanhe seu progresso por aqui.</p>
+      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar meu primeiro objetivo</a>
     </div>
   {% endif %}
 </div>
@@ -316,3 +328,4 @@
 </div>
 
 {% endblock %}
+```
