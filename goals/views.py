@@ -155,7 +155,7 @@ def guardar_troco(request, pk):
             messages.success(
                 request,
                 f'Parabéns! Você concluiu o objetivo "{objetivo.nome}". '
-                "Ele ficará disponível por mais 10 dias antes de ser "
+                "Ele ficará disponível por mais 10 minutos antes de ser "
                 "arquivado.",
             )
         else:
