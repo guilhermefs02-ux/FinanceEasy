@@ -6,7 +6,6 @@ from django.db.models import Sum
 from django.shortcuts import redirect, render
 
 from goals.models import Goal
-from transactions.models import RecurringBill, Transaction
 
 from .services.hgbrasil import obter_dados_financeiros
 
