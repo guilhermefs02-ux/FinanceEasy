@@ -5,11 +5,50 @@ from django.contrib.auth.password_validation import validate_password
 from .models import User
 
 
+def validar_requisitos_senha(senha):
+    """Exige maiúscula, minúscula, número e caractere especial."""
+
+    erros = []
+
+    if len(senha) < 8:
+        erros.append("A senha deve ter pelo menos 8 caracteres.")
+
+    if not any(c.isupper() for c in senha):
+        erros.append("A senha deve conter pelo menos uma letra maiúscula.")
+
+    if not any(c.islower() for c in senha):
+        erros.append("A senha deve conter pelo menos uma letra minúscula.")
+
+    if not any(c.isdigit() for c in senha):
+        erros.append("A senha deve conter pelo menos um número.")
+
+    if not any(not c.isalnum() for c in senha):
+        erros.append(
+            "A senha deve conter pelo menos um caractere especial, "
+            "como @, #, ! ou $."
+        )
+
+    if erros:
+        raise forms.ValidationError(erros)
+
+
+def validar_senha_completa(senha, user=None):
+    """Aplica os requisitos próprios e os validadores do Django."""
+
+    validar_requisitos_senha(senha)
+    validate_password(senha, user=user)
+
+
 class CadastroForm(forms.ModelForm):
-    """UC01, passos 2-3 — cadastro com validação de senha."""
+    """Cadastro com validação de senha."""
 
     senha = forms.CharField(
         label="Senha",
+        min_length=8,
+        help_text=(
+            "Mínimo de 8 caracteres, com maiúscula, minúscula, "
+            "número e caractere especial."
+        ),
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
@@ -17,8 +56,6 @@ class CadastroForm(forms.ModelForm):
                 "autocomplete": "new-password",
             }
         ),
-        min_length=12,
-        help_text="Use pelo menos 12 caracteres e evite senhas comuns.",
     )
 
     confirmar_senha = forms.CharField(
@@ -79,7 +116,7 @@ class CadastroForm(forms.ModelForm):
             )
 
             try:
-                validate_password(senha, user=usuario)
+                validar_senha_completa(senha, user=usuario)
             except forms.ValidationError as erro:
                 self.add_error("senha", erro)
 
@@ -209,8 +246,11 @@ class ConfirmarRecuperacaoForm(forms.Form):
 
     nova_senha = forms.CharField(
         label="Nova senha",
-        min_length=12,
-        help_text="Use pelo menos 12 caracteres e evite senhas comuns.",
+        min_length=8,
+        help_text=(
+            "Mínimo de 8 caracteres, com maiúscula, minúscula, "
+            "número e caractere especial."
+        ),
         widget=forms.PasswordInput(
             attrs={
                 "class": "form-control",
@@ -238,16 +278,16 @@ class ConfirmarRecuperacaoForm(forms.Form):
         senha = cleaned.get("nova_senha")
         confirmar = cleaned.get("confirmar_nova_senha")
 
+        if senha:
+            try:
+                validar_senha_completa(senha, user=self.user)
+            except forms.ValidationError as erro:
+                self.add_error("nova_senha", erro)
+
         if senha and confirmar and senha != confirmar:
             self.add_error(
                 "confirmar_nova_senha",
                 "As senhas não coincidem.",
             )
-
-        if senha:
-            try:
-                validate_password(senha, user=self.user)
-            except forms.ValidationError as erro:
-                self.add_error("nova_senha", erro)
 
         return cleaned
