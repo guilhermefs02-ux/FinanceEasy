@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -35,56 +35,8 @@ def _data_valida_vencimento(ano, mes, dia):
     return date(ano, mes, min(dia, ultimo_dia))
 
 
-def _proximo_vencimento_conta(conta, hoje):
-    """Calcula o próximo vencimento futuro de uma conta."""
-    if conta.periodicidade == "anual":
-        mes = conta.mes_vencimento
-
-        if not mes:
-            return None
-
-        vencimento = _data_valida_vencimento(
-            hoje.year,
-            mes,
-            conta.dia_vencimento,
-        )
-
-        if vencimento < hoje:
-            vencimento = _data_valida_vencimento(
-                hoje.year + 1,
-                mes,
-                conta.dia_vencimento,
-            )
-
-        return vencimento
-
-    vencimento = _data_valida_vencimento(
-        hoje.year,
-        hoje.month,
-        conta.dia_vencimento,
-    )
-
-    if vencimento < hoje:
-        if hoje.month == 12:
-            ano_seguinte = hoje.year + 1
-            mes_seguinte = 1
-        else:
-            ano_seguinte = hoje.year
-            mes_seguinte = hoje.month + 1
-
-        vencimento = _data_valida_vencimento(
-            ano_seguinte,
-            mes_seguinte,
-            conta.dia_vencimento,
-        )
-
-    return vencimento
-
-
 def _vencimento_referencia_conta(conta, hoje):
-    """
-    Retorna o vencimento da competência atual, mesmo se já tiver passado.
-    """
+    """Retorna o vencimento da competência atual da conta recorrente."""
     if conta.periodicidade == "anual":
         mes = conta.mes_vencimento
 
@@ -104,28 +56,68 @@ def _vencimento_referencia_conta(conta, hoje):
     )
 
 
+def _vencimento_referencia_divida(divida, hoje):
+    """
+    Retorna o vencimento da dívida na competência atual.
+
+    Como o modelo Debt não armazena o vencimento individual de cada
+    parcela, utiliza o dia de vencimento cadastrado e o histórico
+    de pagamentos como referência.
+    """
+    if divida.quitada or divida.parcelas_restantes <= 0:
+        return None
+
+    vencimento = _data_valida_vencimento(
+        hoje.year,
+        hoje.month,
+        divida.dia_vencimento,
+    )
+
+    # Evita considerar como atrasada uma dívida cadastrada depois
+    # do vencimento deste mês, caso nenhuma parcela tenha sido paga.
+    criada_em = timezone.localtime(divida.criado_em).date()
+
+    if (
+        criada_em.year == hoje.year
+        and criada_em.month == hoje.month
+        and criada_em > vencimento
+        and divida.parcelas_pagas == 0
+    ):
+        return None
+
+    # Se houve pagamento registrado neste mês, não exibe novamente
+    # a parcela da competência atual como pendente.
+    pagamento_no_mes = divida.pagamentos.filter(
+        data_pagamento__year=hoje.year,
+        data_pagamento__month=hoje.month,
+    ).exists()
+
+    if pagamento_no_mes:
+        return None
+
+    return vencimento
+
+
 def _central_de_avisos(user, dias_janela=7):
     """
-    Monta a Central de Avisos com contas recorrentes e parcelas de dívidas.
+    Centraliza os avisos de contas recorrentes e dívidas em aberto.
 
-    Cada conta recorrente possui um registro de pagamento por vencimento.
-    O valor exibido é o valor integral da conta, inclusive nas anuais.
+    As contas recorrentes respeitam o pagamento de cada ocorrência.
+    As dívidas quitadas ou sem parcelas restantes são ignoradas.
     """
-    hoje = date.today()
+    hoje = timezone.localdate()
     limite = hoje + timedelta(days=dias_janela)
 
     avisos_vencidos = []
     avisos_a_vencer = []
 
-    # Contas fixas e assinaturas mensais ou anuais.
+    # Contas recorrentes mensais e anuais.
     for conta in user.recorrencias.filter(ativo=True):
         vencimento = _vencimento_referencia_conta(conta, hoje)
 
         if vencimento is None:
             continue
 
-        # Cria o registro da ocorrência, se ainda não existir.
-        # A restrição única do modelo impede duplicar o mesmo vencimento.
         pagamento, _ = conta.pagamentos.get_or_create(
             data_vencimento=vencimento,
             defaults={
@@ -134,7 +126,7 @@ def _central_de_avisos(user, dias_janela=7):
             },
         )
 
-        # Uma ocorrência paga não aparece como pendente.
+        # Não exibe ocorrências já pagas.
         if pagamento.status == "pago":
             continue
 
@@ -142,7 +134,7 @@ def _central_de_avisos(user, dias_janela=7):
             "tipo": "conta",
             "periodicidade": conta.periodicidade,
             "nome": conta.nome_servico,
-            "valor": conta.valor,
+            "valor": pagamento.valor,
             "vencimento": vencimento,
             "categoria": conta.categoria,
             "conta": conta,
@@ -154,14 +146,20 @@ def _central_de_avisos(user, dias_janela=7):
         elif vencimento <= limite:
             avisos_a_vencer.append(item)
 
-    # Dívidas e parcelas continuam sendo tratadas separadamente.
-    from core.services.due_date_scan import _proxima_data_vencimento
-
-    for divida in user.dividas.filter(quitada=False):
-        vencimento = _proxima_data_vencimento(
-            divida.dia_vencimento,
-            hoje,
+    # Dívidas com parcelas restantes.
+    dividas = (
+        user.dividas.filter(
+            quitada=False,
+            parcelas_pagas__lt=F("total_parcelas"),
         )
+        .prefetch_related("pagamentos")
+    )
+
+    for divida in dividas:
+        vencimento = _vencimento_referencia_divida(divida, hoje)
+
+        if vencimento is None:
+            continue
 
         item = {
             "tipo": "divida",
@@ -194,7 +192,7 @@ def _central_de_avisos(user, dias_janela=7):
 
 @login_required
 def painel(request):
-    hoje = date.today()
+    hoje = timezone.localdate()
     inicio_mes, fim_mes = _inicio_fim_mes(hoje)
 
     transacoes_mes = Transaction.objects.filter(
@@ -243,7 +241,7 @@ def painel(request):
         dias_janela=7,
     )
 
-    # Apenas avisos futuros entram no cálculo da sobra segura.
+    # Considera os valores dos avisos futuros no cálculo da sobra segura.
     total_a_vencer_7_dias = sum(
         (
             item["valor"]
@@ -358,10 +356,7 @@ def painel(request):
 @login_required
 @require_POST
 def marcar_conta_paga(request, pagamento_id):
-    """
-    Marca como paga somente a ocorrência de vencimento selecionada.
-    Não altera os vencimentos futuros da conta recorrente.
-    """
+    """Marca como paga somente a ocorrência selecionada."""
     pagamento = get_object_or_404(
         RecurringBillPayment.objects.select_related("conta"),
         pk=pagamento_id,
