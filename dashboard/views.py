@@ -150,6 +150,7 @@ def painel(request):
         is_colchao_padrao=True,
     ).first()
 
+    # Carrega todos os objetivos do usuário.
     objetivos = list(
         Goal.objects.filter(
             usuario=request.user,
@@ -161,6 +162,7 @@ def painel(request):
 
     total_acumulado_objetivos = Decimal("0")
 
+    # Calcula os valores e guarda o saldo para ordenar os objetivos.
     for objetivo in objetivos:
         acumulado = objetivo.valor_acumulado
 
@@ -169,7 +171,22 @@ def painel(request):
             Decimal("0"),
         )
 
+        # Atributo auxiliar usado somente para ordenar.
+        # Não altera a propriedade valor_acumulado do modelo.
+        objetivo._acumulado_ordem = acumulado
+
         total_acumulado_objetivos += acumulado
+
+    # O colchão padrão permanece sempre primeiro.
+    # Os demais objetivos ficam em ordem decrescente de saldo acumulado.
+    # Em caso de empate, prevalece a data de criação.
+    objetivos.sort(
+        key=lambda objetivo: (
+            not objetivo.is_colchao_padrao,
+            -objetivo._acumulado_ordem,
+            objetivo.criado_em,
+        )
+    )
 
     receitas_detalhes = Transaction.objects.filter(
         usuario=request.user,
