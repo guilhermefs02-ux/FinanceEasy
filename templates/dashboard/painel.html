@@ -4,6 +4,95 @@
 
 {% block content %}
 
+<style>
+  /* Mercado agora: cores adaptáveis ao tema do FinanceEasy */
+  .fe-moeda-card {
+    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
+    border-color: var(--fe-border, #dee2e6) !important;
+    transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+  }
+
+  .fe-moeda-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .fe-moeda-usd {
+    --moeda-cor: #2563eb;
+    border-color: #93c5fd !important;
+  }
+
+  .fe-moeda-eur {
+    --moeda-cor: #7c3aed;
+    border-color: #c4b5fd !important;
+  }
+
+  .fe-moeda-gbp {
+    --moeda-cor: #db2777;
+    border-color: #f9a8d4 !important;
+  }
+
+  .fe-moeda-ars {
+    --moeda-cor: #059669;
+    border-color: #6ee7b7 !important;
+  }
+
+  .fe-moeda-card .fe-moeda-destaque {
+    color: var(--moeda-cor, var(--bs-body-color, inherit)) !important;
+  }
+
+  .fe-moeda-card .fe-moeda-nome,
+  .fe-moeda-card .fe-moeda-valor-venda {
+    color: var(--fe-text, var(--bs-body-color, inherit)) !important;
+  }
+
+  .fe-moeda-bandeira {
+    background: var(--fe-surface, var(--bs-body-bg, #ffffff)) !important;
+    border-color: var(--fe-border, #dee2e6) !important;
+  }
+
+  .fe-moeda-separador {
+    border-color: var(--fe-border, #dee2e6) !important;
+  }
+
+  .fe-taxa-card {
+    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
+    border-color: var(--fe-border, #dee2e6) !important;
+  }
+
+  .fe-moeda-card img {
+    max-width: 100%;
+  }
+
+  /* Compatibilidade com temas escuros baseados em atributos e classes */
+  html[data-theme="dark"] .fe-moeda-card,
+  body[data-theme="dark"] .fe-moeda-card,
+  [data-bs-theme="dark"] .fe-moeda-card,
+  body.dark-mode .fe-moeda-card,
+  html.dark .fe-moeda-card,
+  body.dark .fe-moeda-card {
+    background: var(--fe-surface, var(--bs-body-bg, #212529)) !important;
+  }
+
+  html[data-theme="dark"] .fe-moeda-bandeira,
+  body[data-theme="dark"] .fe-moeda-bandeira,
+  [data-bs-theme="dark"] .fe-moeda-bandeira,
+  body.dark-mode .fe-moeda-bandeira,
+  html.dark .fe-moeda-bandeira,
+  body.dark .fe-moeda-bandeira {
+    background: var(--fe-surface, var(--bs-body-bg, #212529)) !important;
+    border-color: var(--fe-border, #495057) !important;
+  }
+
+  html[data-theme="dark"] .fe-taxa-card,
+  body[data-theme="dark"] .fe-taxa-card,
+  [data-bs-theme="dark"] .fe-taxa-card,
+  body.dark-mode .fe-taxa-card,
+  html.dark .fe-taxa-card,
+  body.dark .fe-taxa-card {
+    background: var(--fe-surface, var(--bs-body-bg, #212529)) !important;
+  }
+</style>
+
 <!-- Boas-vindas e Ação Principal -->
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -189,8 +278,6 @@
       {% endfor %}
     </div>
 
-    <!-- Ver todos os objetivos: aparece somente quando existem mais de 4 -->
-
     {% if objetivos|length > 4 %}
       <div class="text-center mt-3">
         <a href="{% url 'goals:lista' %}" class="btn btn-outline-primary btn-sm">
@@ -209,7 +296,7 @@
   {% endif %}
 </div>
 
-<!-- Mercado agora: cotações coloridas com bandeiras -->
+<!-- Mercado agora -->
 
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -217,7 +304,7 @@
       <p class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-1 text-primary"></i>Mercado agora</p>
       <p class="small text-muted mb-0">Acompanhe as principais moedas em relação ao real.</p>
     </div>
-    <span class="badge rounded-pill border text-body" style="background: var(--fe-surface);">
+    <span class="badge rounded-pill border text-body" style="background: var(--fe-surface); border-color: var(--fe-border) !important;">
       <i class="bi bi-clock me-1"></i>Atualização periódica
     </span>
   </div>
@@ -227,19 +314,19 @@
       {% for moeda in hgbrasil.moedas %}
         <div class="col-12 col-sm-6 col-xl-3">
           {% if moeda.codigo == "USD" %}
-            <div class="h-100 rounded-4 p-3 border" style="border-color: #bfdbfe !important; background: linear-gradient(145deg, #eff6ff, #ffffff); color: #1d4ed8;">
+            <div class="fe-moeda-card fe-moeda-usd h-100 rounded-4 p-3 border" style="color: var(--moeda-cor);">
           {% elif moeda.codigo == "EUR" %}
-            <div class="h-100 rounded-4 p-3 border" style="border-color: #ddd6fe !important; background: linear-gradient(145deg, #f5f3ff, #ffffff); color: #6d28d9;">
+            <div class="fe-moeda-card fe-moeda-eur h-100 rounded-4 p-3 border" style="color: var(--moeda-cor);">
           {% elif moeda.codigo == "GBP" %}
-            <div class="h-100 rounded-4 p-3 border" style="border-color: #fbcfe8 !important; background: linear-gradient(145deg, #fdf2f8, #ffffff); color: #be185d;">
+            <div class="fe-moeda-card fe-moeda-gbp h-100 rounded-4 p-3 border" style="color: var(--moeda-cor);">
           {% elif moeda.codigo == "ARS" %}
-            <div class="h-100 rounded-4 p-3 border" style="border-color: #a7f3d0 !important; background: linear-gradient(145deg, #ecfdf5, #ffffff); color: #047857;">
+            <div class="fe-moeda-card fe-moeda-ars h-100 rounded-4 p-3 border" style="color: var(--moeda-cor);">
           {% else %}
-            <div class="h-100 rounded-4 p-3 border" style="border-color: var(--fe-border) !important; background: var(--fe-surface);">
+            <div class="fe-moeda-card h-100 rounded-4 p-3 border">
           {% endif %}
 
             <div class="d-flex align-items-center gap-3 mb-4">
-              <div class="d-flex align-items-center justify-content-center rounded-3 bg-white border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0; border-color: rgba(0,0,0,.08) !important;">
+              <div class="fe-moeda-bandeira d-flex align-items-center justify-content-center rounded-3 border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0;">
                 {% if moeda.codigo == "USD" %}
                   <img src="https://flagcdn.com/w80/us.png" alt="Bandeira dos Estados Unidos" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
                   <span style="display:none;font-size:1.7rem;">🇺🇸</span>
@@ -258,13 +345,13 @@
               </div>
 
               <div class="min-w-0">
-                <p class="fw-bold mb-0 text-dark">{{ moeda.nome }}</p>
+                <p class="fe-moeda-nome fw-bold mb-0">{{ moeda.nome }}</p>
                 <p class="small mb-0 text-muted">{{ moeda.codigo }} / BRL</p>
               </div>
             </div>
 
             <p class="small text-muted mb-1">Cotação de compra</p>
-            <p class="h3 fw-bold mb-3" style="letter-spacing: -0.5px;">
+            <p class="fe-moeda-destaque h3 fw-bold mb-3" style="letter-spacing: -0.5px;">
               {% if moeda.compra %}
                 R$ {{ moeda.compra }}
               {% elif moeda.venda %}
@@ -275,9 +362,9 @@
             </p>
 
             {% if moeda.venda %}
-              <div class="d-flex justify-content-between align-items-center small border-top pt-2" style="border-color: rgba(0,0,0,.10) !important;">
+              <div class="fe-moeda-separador d-flex justify-content-between align-items-center small border-top pt-2">
                 <span class="text-muted">Venda</span>
-                <span class="fw-bold text-dark">R$ {{ moeda.venda }}</span>
+                <span class="fe-moeda-valor-venda fw-bold">R$ {{ moeda.venda }}</span>
               </div>
             {% endif %}
 
@@ -302,7 +389,7 @@
               </div>
             {% endif %}
 
-          </div>
+            </div>
         </div>
       {% empty %}
         <div class="col-12">
@@ -317,7 +404,7 @@
       <div class="row g-3 mt-1">
         {% if hgbrasil.taxas.selic %}
           <div class="col-6 col-md-3">
-            <div class="border rounded-3 p-3 h-100" style="border-color: #bfdbfe !important; background: linear-gradient(145deg, #eff6ff, var(--fe-surface));">
+            <div class="fe-taxa-card border rounded-3 p-3 h-100">
               <p class="small text-muted mb-1"><i class="bi bi-bank me-1 text-primary"></i>Taxa Selic</p>
               <p class="h4 fw-bold mb-0 text-primary">{{ hgbrasil.taxas.selic }}%</p>
               <p class="small text-muted mb-0 mt-1">Taxa básica de juros</p>
@@ -326,7 +413,7 @@
         {% endif %}
         {% if hgbrasil.taxas.cdi %}
           <div class="col-6 col-md-3">
-            <div class="border rounded-3 p-3 h-100" style="border-color: #a7f3d0 !important; background: linear-gradient(145deg, #ecfdf5, var(--fe-surface));">
+            <div class="fe-taxa-card border rounded-3 p-3 h-100">
               <p class="small text-muted mb-1"><i class="bi bi-percent me-1 text-success"></i>Taxa CDI</p>
               <p class="h4 fw-bold mb-0 text-success">{{ hgbrasil.taxas.cdi }}%</p>
               <p class="small text-muted mb-0 mt-1">Referência para investimentos</p>
@@ -336,7 +423,7 @@
       </div>
     {% endif %}
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-top mt-3 pt-3" style="border-color: var(--fe-border) !important;">
+    <div class="fe-moeda-separador d-flex justify-content-between align-items-center flex-wrap gap-2 border-top mt-3 pt-3">
       <p class="small text-muted mb-0">
         <i class="bi bi-info-circle me-1"></i>Fonte: HG Brasil
       </p>
