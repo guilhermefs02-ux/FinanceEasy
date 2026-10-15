@@ -209,38 +209,102 @@
   {% endif %}
 </div>
 
-<!-- Mercado agora -->
+<!-- Mercado agora: cotações em cards -->
 
 <div class="fe-card mt-3">
-  <p class="fw-semibold mb-3"><i class="bi bi-graph-up-arrow me-1"></i>Mercado agora</p>
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <p class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Mercado agora</p>
+      <p class="small text-muted mb-0">Acompanhe as principais moedas em relação ao real.</p>
+    </div>
+    <span class="badge rounded-pill text-bg-light border">
+      <i class="bi bi-clock me-1"></i>Atualização periódica
+    </span>
+  </div>
+
   {% if hgbrasil.disponivel %}
     <div class="row g-3">
       {% for moeda in hgbrasil.moedas %}
-        <div class="col-6 col-md-3">
-          <p class="small text-muted mb-0">{{ moeda.nome }}</p>
-          <p class="fw-semibold mb-0">R$ {{ moeda.compra|default:moeda.venda }}</p>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="h-100 border rounded-3 p-3" style="border-color: var(--fe-border) !important; background: var(--fe-surface);">
+            <div class="d-flex align-items-center gap-2 mb-3">
+              <span class="d-inline-flex align-items-center justify-content-center rounded-circle border" style="width: 42px; height: 42px; font-size: 1.35rem; flex-shrink: 0;">
+                {% if moeda.codigo == "USD" %}🇺🇸
+                {% elif moeda.codigo == "EUR" %}🇪🇺
+                {% elif moeda.codigo == "GBP" %}🇬🇧
+                {% elif moeda.codigo == "ARS" %}🇦🇷
+                {% else %}💱
+                {% endif %}
+              </span>
+              <div class="min-w-0">
+                <p class="fw-semibold mb-0">{{ moeda.nome }}</p>
+                <p class="small text-muted mb-0">{{ moeda.codigo }} / BRL</p>
+              </div>
+            </div>
+
+            <p class="small text-muted mb-1">Compra</p>
+            <p class="h5 fw-bold mb-3">R$ {{ moeda.compra|default:moeda.venda|default:"Indisponível" }}</p>
+
+            {% if moeda.venda %}
+              <div class="d-flex justify-content-between align-items-center small border-top pt-2" style="border-color: var(--fe-border) !important;">
+                <span class="text-muted">Venda</span>
+                <span class="fw-semibold">R$ {{ moeda.venda }}</span>
+              </div>
+            {% endif %}
+
+            {% if moeda.variacao != None %}
+              <div class="mt-2 small text-muted">
+                <i class="bi bi-activity me-1"></i>Variação diária: {{ moeda.variacao }}%
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12">
+          <p class="small text-muted mb-0">As cotações das moedas selecionadas não estão disponíveis neste momento.</p>
         </div>
       {% endfor %}
-      {% if hgbrasil.taxas.selic %}
-        <div class="col-6 col-md-3">
-          <p class="small text-muted mb-0">Selic</p>
-          <p class="fw-semibold mb-0">{{ hgbrasil.taxas.selic }}%</p>
-        </div>
-      {% endif %}
-      {% if hgbrasil.taxas.cdi %}
-        <div class="col-6 col-md-3">
-          <p class="small text-muted mb-0">CDI</p>
-          <p class="fw-semibold mb-0">{{ hgbrasil.taxas.cdi }}%</p>
-        </div>
+    </div>
+
+    {% if hgbrasil.taxas.selic or hgbrasil.taxas.cdi %}
+      <div class="row g-3 mt-1">
+        {% if hgbrasil.taxas.selic %}
+          <div class="col-6 col-md-3">
+            <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important;">
+              <p class="small text-muted mb-1"><i class="bi bi-bank me-1"></i>Selic</p>
+              <p class="h5 fw-bold mb-0">{{ hgbrasil.taxas.selic }}%</p>
+            </div>
+          </div>
+        {% endif %}
+        {% if hgbrasil.taxas.cdi %}
+          <div class="col-6 col-md-3">
+            <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important;">
+              <p class="small text-muted mb-1"><i class="bi bi-percent me-1"></i>CDI</p>
+              <p class="h5 fw-bold mb-0">{{ hgbrasil.taxas.cdi }}%</p>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 border-top mt-3 pt-3" style="border-color: var(--fe-border) !important;">
+      <p class="small text-muted mb-0">
+        <i class="bi bi-info-circle me-1"></i>Fonte: HG Brasil
+      </p>
+      {% if hgbrasil.atualizado_em %}
+        <p class="small text-muted mb-0">
+          <i class="bi bi-clock-history me-1"></i>Dados informados pela API: {{ hgbrasil.atualizado_em }}
+        </p>
       {% endif %}
     </div>
-    {% if hgbrasil.atualizado_em %}
-      <p class="small text-muted mt-2 mb-0">Atualizado em {{ hgbrasil.atualizado_em }} — fonte: HG Brasil</p>
-    {% endif %}
   {% else %}
-    <p class="small text-muted mb-0">
-      <i class="bi bi-info-circle me-1"></i>{{ hgbrasil.motivo_indisponivel }}
-    </p>
+    <div class="d-flex align-items-start gap-2 rounded-3 p-3" style="background: var(--fe-surface);">
+      <i class="bi bi-info-circle text-muted mt-1"></i>
+      <div>
+        <p class="fw-semibold mb-1">Cotações temporariamente indisponíveis</p>
+        <p class="small text-muted mb-0">{{ hgbrasil.motivo_indisponivel }}</p>
+      </div>
+    </div>
   {% endif %}
 </div>
 
