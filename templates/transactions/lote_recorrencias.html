@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% load finance_extras %}
+
 {% block title %}Lançar despesas fixas em lote — FinanceEasy{% endblock %}
+
 {% block content %}
-<h1 class="h5 fw-bold mb-1"><i class="bi bi-arrow-repeat text-primary me-1"></i>Lançar despesas fixas em lote</h1>
+<h1 class="h5 fw-bold mb-1">
+  <i class="bi bi-arrow-repeat text-primary me-1"></i>
+  Lançar despesas fixas em lote
+</h1>
+
 <p class="text-muted small mb-3">
   Ideal para migrar tudo de uma planilha de uma vez. Preencha quantas linhas quiser e salve tudo junto. Linhas em branco são ignoradas.
+  Para despesas anuais, informe também o mês do vencimento.
 </p>
 
 <form method="post" novalidate id="form-lote">
@@ -12,42 +19,68 @@
   {{ formset.management_form }}
 
   {% if formset.non_form_errors %}
-    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+    <div class="alert alert-danger">
+      {{ formset.non_form_errors }}
+    </div>
   {% endif %}
 
   <div id="lote-rows" class="d-flex flex-column gap-2 mb-2">
     {% for form in formset %}
-      <div class="fe-card fe-lote-row py-2">
+      <div class="fe-card fe-lote-row py-3">
+        {% for hidden in form.hidden_fields %}
+          {{ hidden }}
+        {% endfor %}
+
         <div class="row g-2 align-items-end">
           <div class="col-12 col-md-3">
             {{ form.nome_servico.label_tag }}
             {{ form.nome_servico }}
           </div>
+
           <div class="col-6 col-md-3">
             {{ form.categoria.label_tag }}
             {{ form.categoria }}
           </div>
+
           <div class="col-6 col-md-2">
             {{ form.valor.label_tag }}
             {{ form.valor }}
           </div>
+
           <div class="col-6 col-md-2">
             {{ form.periodicidade.label_tag }}
             {{ form.periodicidade }}
           </div>
-          <div class="col-4 col-md-1">
+
+          <div class="col-6 col-md-1">
             {{ form.dia_vencimento.label_tag }}
             {{ form.dia_vencimento }}
           </div>
-          <div class="col-2 col-md-1 text-end">
-            <button type="button" class="btn btn-sm btn-outline-danger fe-lote-remove" aria-label="Remover linha" title="Remover linha">
-              <i class="bi bi-trash"></i>
+
+          <div class="col-6 col-md-1">
+            {% if form.mes_vencimento %}
+              {{ form.mes_vencimento.label_tag }}
+              {{ form.mes_vencimento }}
+            {% endif %}
+          </div>
+
+          <div class="col-12 text-end">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-danger fe-lote-remove"
+              aria-label="Remover linha"
+              title="Remover linha"
+            >
+              <i class="bi bi-trash me-1"></i>Remover linha
             </button>
           </div>
         </div>
+
         {% for campo in form %}
           {% for erro in campo.errors %}
-            <div class="text-danger small mt-1">{{ campo.label }}: {{ erro }}</div>
+            <div class="text-danger small mt-1">
+              {{ campo.label }}: {{ erro }}
+            </div>
           {% endfor %}
         {% endfor %}
       </div>
@@ -55,38 +88,63 @@
   </div>
 
   <template id="empty-form-template">
-    <div class="fe-card fe-lote-row py-2">
+    <div class="fe-card fe-lote-row py-3">
+      {% for hidden in formset.empty_form.hidden_fields %}
+        {{ hidden }}
+      {% endfor %}
+
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-3">
           {{ formset.empty_form.nome_servico.label_tag }}
           {{ formset.empty_form.nome_servico }}
         </div>
+
         <div class="col-6 col-md-3">
           {{ formset.empty_form.categoria.label_tag }}
           {{ formset.empty_form.categoria }}
         </div>
+
         <div class="col-6 col-md-2">
           {{ formset.empty_form.valor.label_tag }}
           {{ formset.empty_form.valor }}
         </div>
+
         <div class="col-6 col-md-2">
           {{ formset.empty_form.periodicidade.label_tag }}
           {{ formset.empty_form.periodicidade }}
         </div>
-        <div class="col-4 col-md-1">
+
+        <div class="col-6 col-md-1">
           {{ formset.empty_form.dia_vencimento.label_tag }}
           {{ formset.empty_form.dia_vencimento }}
         </div>
-        <div class="col-2 col-md-1 text-end">
-          <button type="button" class="btn btn-sm btn-outline-danger fe-lote-remove" aria-label="Remover linha" title="Remover linha">
-            <i class="bi bi-trash"></i>
+
+        <div class="col-6 col-md-1">
+          {% if formset.empty_form.mes_vencimento %}
+            {{ formset.empty_form.mes_vencimento.label_tag }}
+            {{ formset.empty_form.mes_vencimento }}
+          {% endif %}
+        </div>
+
+        <div class="col-12 text-end">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-danger fe-lote-remove"
+            aria-label="Remover linha"
+            title="Remover linha"
+          >
+            <i class="bi bi-trash me-1"></i>Remover linha
           </button>
         </div>
       </div>
     </div>
   </template>
 
-  <button type="button" id="fe-lote-add-row" class="btn btn-sm btn-outline-secondary mb-3">
+  <button
+    type="button"
+    id="fe-lote-add-row"
+    class="btn btn-sm btn-outline-secondary mb-3"
+  >
     <i class="bi bi-plus-lg me-1"></i>Adicionar linha
   </button>
 
@@ -94,4 +152,90 @@
     <i class="bi bi-check2-all me-1"></i>Salvar tudo
   </button>
 </form>
+
+<script>
+(function () {
+  const form = document.getElementById("form-lote");
+  const rows = document.getElementById("lote-rows");
+  const template = document.getElementById("empty-form-template");
+  const addButton = document.getElementById("fe-lote-add-row");
+  const totalForms = document.getElementById("id_form-TOTAL_FORMS");
+
+  if (!form || !rows || !template || !addButton || !totalForms) {
+    return;
+  }
+
+  function atualizarCampoMes(linha) {
+    const periodicidade = linha.querySelector('[name$="-periodicidade"]');
+    const campoMes = linha.querySelector('[name$="-mes_vencimento"]');
+
+    if (!periodicidade || !campoMes) {
+      return;
+    }
+
+    const grupoMes = campoMes.closest(".col-6") || campoMes.parentElement;
+    const valor = (periodicidade.value || "").toLowerCase();
+
+    const anual =
+      valor.includes("anual") ||
+      valor.includes("year") ||
+      valor === "a";
+
+    grupoMes.style.display = anual ? "" : "none";
+
+    if (!anual) {
+      campoMes.value = "";
+    }
+  }
+
+  function prepararLinha(linha) {
+    linha.querySelectorAll('[name$="-periodicidade"]').forEach(function (campo) {
+      campo.addEventListener("change", function () {
+        atualizarCampoMes(linha);
+      });
+    });
+
+    atualizarCampoMes(linha);
+  }
+
+  rows.querySelectorAll(".fe-lote-row").forEach(prepararLinha);
+
+  addButton.addEventListener("click", function () {
+    const indice = Number.parseInt(totalForms.value, 10);
+    const html = template.innerHTML.replace(/__prefix__/g, indice);
+    const temporario = document.createElement("div");
+
+    temporario.innerHTML = html.trim();
+
+    const novaLinha = temporario.firstElementChild;
+    rows.appendChild(novaLinha);
+
+    totalForms.value = indice + 1;
+    prepararLinha(novaLinha);
+  });
+
+  rows.addEventListener("click", function (evento) {
+    const botao = evento.target.closest(".fe-lote-remove");
+
+    if (!botao) {
+      return;
+    }
+
+    const linha = botao.closest(".fe-lote-row");
+
+    if (!linha) {
+      return;
+    }
+
+    const campoDelete = linha.querySelector('[name$="-DELETE"]');
+
+    if (campoDelete) {
+      campoDelete.checked = true;
+      linha.style.display = "none";
+    } else {
+      linha.remove();
+    }
+  });
+})();
+</script>
 {% endblock %}
