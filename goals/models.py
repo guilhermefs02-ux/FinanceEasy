@@ -65,7 +65,7 @@ class Goal(models.Model):
         if self.is_colchao_padrao or not self.concluido_em:
             return None
 
-        return self.concluido_em + timedelta(days=10)
+        return self.concluido_em + timedelta(minutes=10)
 
     @property
     def dias_para_arquivar(self):
@@ -147,7 +147,7 @@ class GoalWithdrawal(models.Model):
 def atualizar_objetivos_e_arquivar(usuario):
     """
     Atualiza o status dos objetivos e arquiva os objetivos secundários
-    concluídos há pelo menos 10 dias, preservando seus registros.
+    concluídos há pelo menos 10 minutos, preservando seus registros.
     """
 
     objetivos = Goal.objects.filter(
@@ -158,7 +158,7 @@ def atualizar_objetivos_e_arquivar(usuario):
     for objetivo in objetivos.iterator():
         objetivo.atualizar_status_conclusao()
 
-    limite = timezone.now() - timedelta(days=10)
+    limite = timezone.now() - timedelta(minutes=10)
 
     objetivos_vencidos = Goal.objects.filter(
         usuario=usuario,
