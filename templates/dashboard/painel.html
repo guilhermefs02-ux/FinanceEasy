@@ -5,7 +5,6 @@
 {% block content %}
 
 <style>
-  /* Mercado agora: cores adaptáveis ao tema do FinanceEasy */
   .fe-moeda-card {
     background: var(--fe-surface, var(--bs-body-bg, #ffffff));
     border-color: var(--fe-border, #dee2e6) !important;
@@ -16,25 +15,10 @@
     transform: translateY(-2px);
   }
 
-  .fe-moeda-usd {
-    --moeda-cor: #2563eb;
-    border-color: #93c5fd !important;
-  }
-
-  .fe-moeda-eur {
-    --moeda-cor: #7c3aed;
-    border-color: #c4b5fd !important;
-  }
-
-  .fe-moeda-gbp {
-    --moeda-cor: #db2777;
-    border-color: #f9a8d4 !important;
-  }
-
-  .fe-moeda-ars {
-    --moeda-cor: #059669;
-    border-color: #6ee7b7 !important;
-  }
+  .fe-moeda-usd { --moeda-cor: #2563eb; border-color: #93c5fd !important; }
+  .fe-moeda-eur { --moeda-cor: #7c3aed; border-color: #c4b5fd !important; }
+  .fe-moeda-gbp { --moeda-cor: #db2777; border-color: #f9a8d4 !important; }
+  .fe-moeda-ars { --moeda-cor: #059669; border-color: #6ee7b7 !important; }
 
   .fe-moeda-card .fe-moeda-destaque {
     color: var(--moeda-cor, var(--bs-body-color, inherit)) !important;
@@ -63,7 +47,6 @@
     max-width: 100%;
   }
 
-  /* Compatibilidade com temas escuros baseados em atributos e classes */
   html[data-theme="dark"] .fe-moeda-card,
   body[data-theme="dark"] .fe-moeda-card,
   [data-bs-theme="dark"] .fe-moeda-card,
@@ -91,24 +74,48 @@
   body.dark .fe-taxa-card {
     background: var(--fe-surface, var(--bs-body-bg, #212529)) !important;
   }
+
+  .fe-aviso-item {
+    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
+    border: 1px solid var(--fe-border, #dee2e6);
+    border-radius: 12px;
+    padding: 16px;
+    height: 100%;
+  }
+
+  .fe-aviso-item p:last-child {
+    margin-bottom: 0;
+  }
+
+  .fe-aviso-data {
+    color: var(--fe-text, var(--bs-body-color, inherit));
+    font-size: .875rem;
+  }
+
+  .fe-aviso-acao {
+    margin-top: 14px;
+  }
 </style>
 
-<!-- Boas-vindas e Ação Principal -->
+<!-- Boas-vindas e ação principal -->
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="h4 fw-bold mb-0">Olá, {{ user.primeiro_nome }} 👋</h1>
     <p class="text-muted small mb-0">{{ mes_referencia|date:"F/Y"|capfirst }}</p>
   </div>
-  <a href="{% url 'transactions:importar_extrato' %}" class="btn fe-btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-1 shadow-sm">
+
+  <a href="{% url 'transactions:importar_extrato' %}"
+     class="btn fe-btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-1 shadow-sm">
     <i class="bi bi-cloud-upload"></i> Importar extrato do mês
   </a>
 </div>
 
-<!-- Botão de Importação para Mobile -->
+<!-- Botão de importação para mobile -->
 
 <div class="d-md-none mb-3">
-  <a href="{% url 'transactions:importar_extrato' %}" class="btn fe-btn-primary w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+  <a href="{% url 'transactions:importar_extrato' %}"
+     class="btn fe-btn-primary w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm">
     <i class="bi bi-cloud-upload"></i> Importar extrato do mês
   </a>
 </div>
@@ -118,24 +125,36 @@
 <div class="row g-3 mb-3">
   <div class="col-12 col-md-4">
     <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalReceitas" style="cursor: pointer;">
-      <p class="text-muted small mb-1"><i class="bi bi-arrow-down-circle text-success me-1"></i>Receitas do mês</p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_receitas|brl }}</p>
+      <p class="text-muted small mb-1">
+        <i class="bi bi-arrow-down-circle text-success me-1"></i>Receitas do mês
+      </p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+        {{ total_receitas|brl }}
+      </p>
       <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
     </div>
   </div>
 
   <div class="col-12 col-md-4">
     <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalDespesas" style="cursor: pointer;">
-      <p class="text-muted small mb-1"><i class="bi bi-arrow-up-circle text-danger me-1"></i>Despesas realizadas</p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_despesas|brl }}</p>
+      <p class="text-muted small mb-1">
+        <i class="bi bi-arrow-up-circle text-danger me-1"></i>Despesas realizadas
+      </p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+        {{ total_despesas|brl }}
+      </p>
       <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
     </div>
   </div>
 
   <div class="col-12 col-md-4">
     <div class="fe-card h-100">
-      <p class="text-muted small mb-1"><i class="bi bi-wallet2 me-1"></i>Saldo disponível</p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ saldo_disponivel|brl }}</p>
+      <p class="text-muted small mb-1">
+        <i class="bi bi-wallet2 me-1"></i>Saldo disponível
+      </p>
+      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+        {{ saldo_disponivel|brl }}
+      </p>
     </div>
   </div>
 </div>
@@ -145,36 +164,178 @@
 <div class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %} mb-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
-      <p class="mb-1 fw-semibold"><i class="bi bi-shield-check me-1"></i>Quanto sobra com segurança</p>
-      <p class="fe-valor-grande mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ sobra_segura|brl }}</p>
-      <p class="small mb-0 mt-1 opacity-75">Saldo disponível menos as contas e parcelas que vencem nos próximos 7 dias.</p>
+      <p class="mb-1 fw-semibold">
+        <i class="bi bi-shield-check me-1"></i>Quanto sobra com segurança
+      </p>
+      <p class="fe-valor-grande mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+        {{ sobra_segura|brl }}
+      </p>
+      <p class="small mb-0 mt-1 opacity-75">
+        Saldo disponível menos as contas e parcelas que vencem nos próximos 7 dias.
+      </p>
     </div>
     <i class="bi bi-piggy-bank" style="font-size: 2.5rem; opacity: 0.35;"></i>
   </div>
 </div>
 
-<!-- Contas próximas -->
+<!-- Central de Avisos -->
 
 <div class="fe-card mb-3">
-  <p class="fw-semibold mb-3"><i class="bi bi-calendar-event me-1"></i>Contas próximas (7 dias)</p>
-  {% if proximas_contas %}
-    <div class="d-flex gap-3 overflow-auto pb-2">
-      {% for item in proximas_contas %}
-        <div class="border rounded-3 p-3 flex-shrink-0" style="min-width: 200px; border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
-          <p class="small text-muted mb-1">
-            {% if item.tipo == "divida" %}<i class="bi bi-credit-card-2-front me-1"></i>Parcela{% else %}<i class="bi bi-house-door me-1"></i>Conta fixa{% endif %}
-          </p>
-          <p class="fw-semibold mb-1">{{ item.nome }}</p>
-          <p class="mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">{{ item.valor|brl }}</p>
-          <span class="badge {% if item.vencimento|dias_ate == 'vence hoje' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
-            {{ item.vencimento|dias_ate }}
-          </span>
-        </div>
-      {% endfor %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-bell me-1"></i>Central de Avisos
+      </p>
+      <p class="small text-muted mb-0">
+        Acompanhe suas contas recorrentes e parcelas de dívidas.
+      </p>
     </div>
-  {% else %}
-    <p class="text-muted small mb-0">Nenhuma conta vencendo nos próximos 7 dias. Respire tranquilo(a). 🌿</p>
-  {% endif %}
+
+    <span class="badge rounded-pill bg-primary-subtle text-primary">
+      {{ total_avisos }} pendência{{ total_avisos|pluralize:"s" }}
+    </span>
+  </div>
+
+  <!-- Contas e parcelas vencidas -->
+
+  <div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-exclamation-circle-fill text-danger"></i>
+      <h2 class="h6 fw-bold mb-0">Vencidas</h2>
+      <span class="badge bg-danger">{{ total_vencidos }}</span>
+    </div>
+
+    {% if avisos_vencidos %}
+      <div class="row g-3">
+        {% for item in avisos_vencidos %}
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="fe-aviso-item">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <span class="small text-muted">
+                  {% if item.tipo == "divida" %}
+                    <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
+                  {% elif item.periodicidade == "anual" %}
+                    <i class="bi bi-calendar-event me-1"></i>Conta anual
+                  {% else %}
+                    <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
+                  {% endif %}
+                </span>
+                <span class="badge bg-danger">Vencida</span>
+              </div>
+
+              <p class="fw-semibold mb-1">{{ item.nome }}</p>
+
+              <p class="h5 fw-bold mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
+                {{ item.valor|brl }}
+              </p>
+
+              <p class="fe-aviso-data mb-1">
+                <i class="bi bi-calendar3 me-1"></i>
+                Vencimento: {{ item.vencimento|date:"d/m/Y" }}
+              </p>
+
+              {% if item.categoria %}
+                <p class="small text-muted mb-0">
+                  {{ item.categoria.nome }}
+                </p>
+              {% endif %}
+
+              {% if item.tipo == "conta" and item.pagamento %}
+                <form method="post"
+                      action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
+                      class="fe-aviso-acao">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-sm w-100">
+                    <i class="bi bi-check-circle me-1"></i>Marcar como pago
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
+        <i class="bi bi-check-circle text-success fs-4"></i>
+        <p class="small text-muted mb-0 mt-2">Nenhuma conta ou parcela vencida registrada. 🌿</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <hr class="my-4">
+
+  <!-- Contas e parcelas a vencer -->
+
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-calendar-check text-warning"></i>
+      <h2 class="h6 fw-bold mb-0">A vencer nos próximos 7 dias</h2>
+      <span class="badge bg-warning text-dark">{{ total_a_vencer }}</span>
+    </div>
+
+    {% if avisos_a_vencer %}
+      <div class="row g-3">
+        {% for item in avisos_a_vencer %}
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="fe-aviso-item">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <span class="small text-muted">
+                  {% if item.tipo == "divida" %}
+                    <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
+                  {% elif item.periodicidade == "anual" %}
+                    <i class="bi bi-calendar-event me-1"></i>Conta anual
+                  {% else %}
+                    <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
+                  {% endif %}
+                </span>
+
+                {% if item.vencimento|dias_ate == "vence hoje" %}
+                  <span class="badge bg-danger">Vence hoje</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">
+                    {{ item.vencimento|dias_ate }}
+                  </span>
+                {% endif %}
+              </div>
+
+              <p class="fw-semibold mb-1">{{ item.nome }}</p>
+
+              <p class="h5 fw-bold mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
+                {{ item.valor|brl }}
+              </p>
+
+              <p class="fe-aviso-data mb-1">
+                <i class="bi bi-calendar3 me-1"></i>
+                Vencimento: {{ item.vencimento|date:"d/m/Y" }}
+              </p>
+
+              {% if item.categoria %}
+                <p class="small text-muted mb-0">
+                  {{ item.categoria.nome }}
+                </p>
+              {% endif %}
+
+              {% if item.tipo == "conta" and item.pagamento %}
+                <form method="post"
+                      action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
+                      class="fe-aviso-acao">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-success btn-sm w-100">
+                    <i class="bi bi-check-circle me-1"></i>Marcar como pago
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
+        <i class="bi bi-calendar-check text-success fs-4"></i>
+        <p class="small text-muted mb-0 mt-2">Nenhuma conta ou parcela vencendo nos próximos 7 dias.</p>
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Categorias de despesas -->
@@ -182,13 +343,21 @@
 <div class="row g-3">
   <div class="col-12">
     <div class="fe-card h-100">
-      <p class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês</p>
+      <p class="fw-semibold mb-3">
+        <i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês
+      </p>
+
       {% if top_categorias %}
         {% for cat in top_categorias %}
           <div class="mb-3">
             <div class="d-flex justify-content-between small mb-1">
-              <span><i class="bi {{ cat.categoria__icone }} me-1" style="color: {{ cat.categoria__cor }};"></i>{{ cat.categoria__nome|default:"Sem categoria" }}</span>
-              <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ cat.total|brl }}</span>
+              <span>
+                <i class="bi {{ cat.categoria__icone }} me-1" style="color: {{ cat.categoria__cor }};"></i>
+                {{ cat.categoria__nome|default:"Sem categoria" }}
+              </span>
+              <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
+                {{ cat.total|brl }}
+              </span>
             </div>
             <div class="fe-progress">
               <div class="fe-progress-bar" style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
@@ -207,15 +376,16 @@
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-      <p class="fw-semibold mb-1"><i class="bi bi-bullseye me-1"></i>Meus objetivos</p>
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-bullseye me-1"></i>Meus objetivos
+      </p>
       <p class="small text-muted mb-0">Acompanhe o que você já guardou para cada objetivo.</p>
     </div>
+
     <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary">
       <i class="bi bi-plus-circle me-1"></i>Gerenciar objetivos
     </a>
   </div>
-
-  <!-- Total acumulado em todos os objetivos -->
 
   <div class="border rounded-3 p-3 mb-3" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
     <div class="d-flex align-items-center gap-3">
@@ -224,7 +394,9 @@
       </div>
       <div>
         <p class="small text-muted mb-1">Total acumulado em todos os objetivos</p>
-        <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">{{ total_acumulado_objetivos|brl }}</p>
+        <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ total_acumulado_objetivos|brl }}
+        </p>
       </div>
     </div>
   </div>
@@ -244,6 +416,7 @@
                   {% endif %}
                   {{ objetivo.nome }}
                 </p>
+
                 {% if objetivo.is_colchao_padrao %}
                   <span class="badge bg-success-subtle text-success">Reserva de segurança</span>
                 {% endif %}
@@ -263,7 +436,9 @@
             </div>
 
             {% if objetivo.percentual_concluido >= 100 %}
-              <p class="small text-success mb-0"><i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!</p>
+              <p class="small text-success mb-0">
+                <i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!
+              </p>
             {% else %}
               <p class="small text-muted mb-0">
                 {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
@@ -285,7 +460,6 @@
         </a>
       </div>
     {% endif %}
-
   {% else %}
     <div class="text-center py-4">
       <i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
@@ -301,9 +475,12 @@
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-      <p class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-1 text-primary"></i>Mercado agora</p>
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-graph-up-arrow me-1 text-primary"></i>Mercado agora
+      </p>
       <p class="small text-muted mb-0">Acompanhe as principais moedas em relação ao real.</p>
     </div>
+
     <span class="badge rounded-pill border text-body" style="background: var(--fe-surface); border-color: var(--fe-border) !important;">
       <i class="bi bi-clock me-1"></i>Atualização periódica
     </span>
@@ -325,70 +502,69 @@
             <div class="fe-moeda-card h-100 rounded-4 p-3 border">
           {% endif %}
 
-            <div class="d-flex align-items-center gap-3 mb-4">
-              <div class="fe-moeda-bandeira d-flex align-items-center justify-content-center rounded-3 border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0;">
-                {% if moeda.codigo == "USD" %}
-                  <img src="https://flagcdn.com/w80/us.png" alt="Bandeira dos Estados Unidos" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-                  <span style="display:none;font-size:1.7rem;">🇺🇸</span>
-                {% elif moeda.codigo == "EUR" %}
-                  <img src="https://flagcdn.com/w80/eu.png" alt="Bandeira da União Europeia" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-                  <span style="display:none;font-size:1.7rem;">🇪🇺</span>
-                {% elif moeda.codigo == "GBP" %}
-                  <img src="https://flagcdn.com/w80/gb.png" alt="Bandeira do Reino Unido" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-                  <span style="display:none;font-size:1.7rem;">🇬🇧</span>
-                {% elif moeda.codigo == "ARS" %}
-                  <img src="https://flagcdn.com/w80/ar.png" alt="Bandeira da Argentina" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
-                  <span style="display:none;font-size:1.7rem;">🇦🇷</span>
+              <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="fe-moeda-bandeira d-flex align-items-center justify-content-center rounded-3 border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0;">
+                  {% if moeda.codigo == "USD" %}
+                    <img src="https://flagcdn.com/w80/us.png" alt="Bandeira dos Estados Unidos" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                    <span style="display:none;font-size:1.7rem;">🇺🇸</span>
+                  {% elif moeda.codigo == "EUR" %}
+                    <img src="https://flagcdn.com/w80/eu.png" alt="Bandeira da União Europeia" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                    <span style="display:none;font-size:1.7rem;">🇪🇺</span>
+                  {% elif moeda.codigo == "GBP" %}
+                    <img src="https://flagcdn.com/w80/gb.png" alt="Bandeira do Reino Unido" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                    <span style="display:none;font-size:1.7rem;">🇬🇧</span>
+                  {% elif moeda.codigo == "ARS" %}
+                    <img src="https://flagcdn.com/w80/ar.png" alt="Bandeira da Argentina" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                    <span style="display:none;font-size:1.7rem;">🇦🇷</span>
+                  {% else %}
+                    <span style="font-size: 1.7rem;">💱</span>
+                  {% endif %}
+                </div>
+
+                <div class="min-w-0">
+                  <p class="fe-moeda-nome fw-bold mb-0">{{ moeda.nome }}</p>
+                  <p class="small mb-0 text-muted">{{ moeda.codigo }} / BRL</p>
+                </div>
+              </div>
+
+              <p class="small text-muted mb-1">Cotação de compra</p>
+              <p class="fe-moeda-destaque h3 fw-bold mb-3" style="letter-spacing: -0.5px;">
+                {% if moeda.compra %}
+                  R$ {{ moeda.compra }}
+                {% elif moeda.venda %}
+                  R$ {{ moeda.venda }}
                 {% else %}
-                  <span style="font-size: 1.7rem;">💱</span>
+                  Indisponível
                 {% endif %}
-              </div>
+              </p>
 
-              <div class="min-w-0">
-                <p class="fe-moeda-nome fw-bold mb-0">{{ moeda.nome }}</p>
-                <p class="small mb-0 text-muted">{{ moeda.codigo }} / BRL</p>
-              </div>
-            </div>
-
-            <p class="small text-muted mb-1">Cotação de compra</p>
-            <p class="fe-moeda-destaque h3 fw-bold mb-3" style="letter-spacing: -0.5px;">
-              {% if moeda.compra %}
-                R$ {{ moeda.compra }}
-              {% elif moeda.venda %}
-                R$ {{ moeda.venda }}
-              {% else %}
-                Indisponível
+              {% if moeda.venda %}
+                <div class="fe-moeda-separador d-flex justify-content-between align-items-center small border-top pt-2">
+                  <span class="text-muted">Venda</span>
+                  <span class="fe-moeda-valor-venda fw-bold">R$ {{ moeda.venda }}</span>
+                </div>
               {% endif %}
-            </p>
 
-            {% if moeda.venda %}
-              <div class="fe-moeda-separador d-flex justify-content-between align-items-center small border-top pt-2">
-                <span class="text-muted">Venda</span>
-                <span class="fe-moeda-valor-venda fw-bold">R$ {{ moeda.venda }}</span>
-              </div>
-            {% endif %}
-
-            {% if moeda.variacao != None %}
-              <div class="mt-3">
-                {% if moeda.variacao > 0 %}
-                  <span class="badge rounded-pill px-2 py-2" style="background: #dcfce7; color: #166534;">
-                    <i class="bi bi-arrow-up-right me-1"></i>{{ moeda.variacao }}%
-                  </span>
-                  <span class="small text-muted ms-1">no dia</span>
-                {% elif moeda.variacao < 0 %}
-                  <span class="badge rounded-pill px-2 py-2" style="background: #fee2e2; color: #991b1b;">
-                    <i class="bi bi-arrow-down-right me-1"></i>{{ moeda.variacao }}%
-                  </span>
-                  <span class="small text-muted ms-1">no dia</span>
-                {% else %}
-                  <span class="badge rounded-pill px-2 py-2" style="background: #f3f4f6; color: #374151;">
-                    <i class="bi bi-dash-lg me-1"></i>{{ moeda.variacao }}%
-                  </span>
-                  <span class="small text-muted ms-1">no dia</span>
-                {% endif %}
-              </div>
-            {% endif %}
-
+              {% if moeda.variacao != None %}
+                <div class="mt-3">
+                  {% if moeda.variacao > 0 %}
+                    <span class="badge rounded-pill px-2 py-2" style="background: #dcfce7; color: #166534;">
+                      <i class="bi bi-arrow-up-right me-1"></i>{{ moeda.variacao }}%
+                    </span>
+                    <span class="small text-muted ms-1">no dia</span>
+                  {% elif moeda.variacao < 0 %}
+                    <span class="badge rounded-pill px-2 py-2" style="background: #fee2e2; color: #991b1b;">
+                      <i class="bi bi-arrow-down-right me-1"></i>{{ moeda.variacao }}%
+                    </span>
+                    <span class="small text-muted ms-1">no dia</span>
+                  {% else %}
+                    <span class="badge rounded-pill px-2 py-2" style="background: #f3f4f6; color: #374151;">
+                      <i class="bi bi-dash-lg me-1"></i>{{ moeda.variacao }}%
+                    </span>
+                    <span class="small text-muted ms-1">no dia</span>
+                  {% endif %}
+                </div>
+              {% endif %}
             </div>
         </div>
       {% empty %}
@@ -405,16 +581,21 @@
         {% if hgbrasil.taxas.selic %}
           <div class="col-6 col-md-3">
             <div class="fe-taxa-card border rounded-3 p-3 h-100">
-              <p class="small text-muted mb-1"><i class="bi bi-bank me-1 text-primary"></i>Taxa Selic</p>
+              <p class="small text-muted mb-1">
+                <i class="bi bi-bank me-1 text-primary"></i>Taxa Selic
+              </p>
               <p class="h4 fw-bold mb-0 text-primary">{{ hgbrasil.taxas.selic }}%</p>
               <p class="small text-muted mb-0 mt-1">Taxa básica de juros</p>
             </div>
           </div>
         {% endif %}
+
         {% if hgbrasil.taxas.cdi %}
           <div class="col-6 col-md-3">
             <div class="fe-taxa-card border rounded-3 p-3 h-100">
-              <p class="small text-muted mb-1"><i class="bi bi-percent me-1 text-success"></i>Taxa CDI</p>
+              <p class="small text-muted mb-1">
+                <i class="bi bi-percent me-1 text-success"></i>Taxa CDI
+              </p>
               <p class="h4 fw-bold mb-0 text-success">{{ hgbrasil.taxas.cdi }}%</p>
               <p class="small text-muted mb-0 mt-1">Referência para investimentos</p>
             </div>
@@ -446,15 +627,18 @@
   {% endif %}
 </div>
 
-<!-- MODAL RECEITAS -->
+<!-- Modal receitas -->
 
 <div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-down-circle me-2"></i>Receitas do Mês</h5>
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-arrow-down-circle me-2"></i>Receitas do Mês
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
+
       <div class="modal-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -487,15 +671,18 @@
   </div>
 </div>
 
-<!-- MODAL DESPESAS -->
+<!-- Modal despesas -->
 
 <div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-up-circle me-2"></i>Despesas Realizadas no Mês</h5>
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-arrow-up-circle me-2"></i>Despesas Realizadas no Mês
+        </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
+
       <div class="modal-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
