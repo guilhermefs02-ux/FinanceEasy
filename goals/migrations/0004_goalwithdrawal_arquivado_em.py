@@ -5,17 +5,14 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("goals", "0001_initial"),
+        ("goals", "0003_remove_goal_arquivado"),
     ]
 
     operations = [
         migrations.AddField(
             model_name="goal",
             name="arquivado_em",
-            field=models.DateTimeField(
-                blank=True,
-                null=True,
-            ),
+            field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.CreateModel(
             name="GoalWithdrawal",
@@ -29,17 +26,8 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                (
-                    "valor",
-                    models.DecimalField(
-                        decimal_places=2,
-                        max_digits=8,
-                    ),
-                ),
-                (
-                    "criado_em",
-                    models.DateTimeField(auto_now_add=True),
-                ),
+                ("valor", models.DecimalField(decimal_places=2, max_digits=8)),
+                ("criado_em", models.DateTimeField(auto_now_add=True)),
                 (
                     "objetivo",
                     models.ForeignKey(
