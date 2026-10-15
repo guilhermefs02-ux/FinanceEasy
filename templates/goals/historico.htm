@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load finance_extras %}
+
+{% block title %}Histórico de objetivos — FinanceEasy{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <h1 class="h5 fw-bold mb-0">
+    <i class="bi bi-clock-history text-primary me-1"></i>
+    Histórico de objetivos
+  </h1>
+
+  <a href="{% url 'goals:lista' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>
+    Voltar aos objetivos
+  </a>
+</div>
+
+{% for objetivo in objetivos %}
+  <div class="fe-card mb-3">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+      <div>
+        <p class="fw-semibold mb-1">{{ objetivo.nome }}</p>
+        <p class="small text-muted mb-0">
+          Concluído em:
+          {% if objetivo.concluido_em %}
+            {{ objetivo.concluido_em|date:"d/m/Y H:i" }}
+          {% else %}
+            Data não disponível
+          {% endif %}
+        </p>
+        <p class="small text-muted mb-0">
+          Arquivado em:
+          {% if objetivo.arquivado_em %}
+            {{ objetivo.arquivado_em|date:"d/m/Y H:i" }}
+          {% else %}
+            Data não disponível
+          {% endif %}
+        </p>
+      </div>
+
+      <span class="badge bg-success">
+        <i class="bi bi-check-circle me-1"></i>
+        Arquivado
+      </span>
+    </div>
+
+    <p class="small mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
+      Saldo final:
+      <strong>{{ objetivo.valor_acumulado|brl }}</strong>
+      de {{ objetivo.valor_alvo|brl }}
+    </p>
+
+    <div class="fe-progress mb-3">
+      <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+    </div>
+
+    <details>
+      <summary class="fw-semibold small">Ver movimentações</summary>
+
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Data</th>
+              <th class="text-end">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for contribuicao in objetivo.contribuicoes.all %}
+              <tr>
+                <td>
+                  <i class="bi bi-plus-circle text-success me-1"></i>
+                  Contribuição
+                </td>
+                <td>{{ contribuicao.criado_em|date:"d/m/Y H:i" }}</td>
+                <td class="text-end text-success {% if privacy_mode_on %}fe-privado{% endif %}">
+                  + {{ contribuicao.valor|brl }}
+                </td>
+              </tr>
+            {% endfor %}
+
+            {% for retirada in objetivo.retiradas.all %}
+              <tr>
+                <td>
+                  <i class="bi bi-dash-circle text-danger me-1"></i>
+                  Retirada
+                </td>
+                <td>{{ retirada.criado_em|date:"d/m/Y H:i" }}</td>
+                <td class="text-end text-danger {% if privacy_mode_on %}fe-privado{% endif %}">
+                  - {{ retirada.valor|brl }}
+                </td>
+              </tr>
+            {% endfor %}
+
+            {% if not objetivo.contribuicoes.exists and not objetivo.retiradas.exists %}
+              <tr>
+                <td colspan="3" class="text-center text-muted small">
+                  Nenhuma movimentação registrada.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+{% empty %}
+  <div class="fe-empty-state">
+    <i class="bi bi-archive" style="font-size: 2rem;"></i>
+    <p class="mb-0 mt-2">
+      Você ainda não tem objetivos arquivados.
+    </p>
+  </div>
+{% endfor %}
+{% endblock %}
