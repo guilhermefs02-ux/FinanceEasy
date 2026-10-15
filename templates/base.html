@@ -7,13 +7,10 @@
   (function() {
     const savedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    // Se o usuário já escolheu manualmente, usa a escolha dele.
-    // Se nunca escolheu, segue o SO.
     const themeToApply = savedTheme || (systemPrefersDark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme', themeToApply);
   })();
-</script>
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}FinanceEasy{% endblock %}</title>
@@ -27,10 +24,14 @@
 {% if user.is_authenticated %}
 <nav class="navbar navbar-expand-lg navbar-fe sticky-top">
   <div class="container">
-    <a class="navbar-brand" href="{% url 'dashboard:painel' %}"><i class="bi bi-piggy-bank-fill me-1"></i>FinanceEasy</a>
+    <a class="navbar-brand" href="{% url 'dashboard:painel' %}">
+      <i class="bi bi-piggy-bank-fill me-1"></i>FinanceEasy
+    </a>
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" style="border-color: rgba(255,255,255,0.5);">
       <span class="navbar-toggler-icon"></span>
     </button>
+
     <div class="collapse navbar-collapse" id="navMenu">
       <ul class="navbar-nav me-auto">
         <li class="nav-item"><a class="nav-link {% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:painel' %}">Painel</a></li>
@@ -38,34 +39,24 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'debts:lista' %}">Dívidas</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'goals:lista' %}">Objetivos</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'transactions:assinaturas' %}">Despesas Fixas</a></li>
-        <a class="nav-link" href="{% url 'transactions:futuros' %}">Futuros</a>
+        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:futuros' %}">Futuros</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'transactions:comparativo_mensal' %}">Gráficos</a></li>
       </ul>
+
       <ul class="navbar-nav align-items-lg-center gap-lg-2">
-         <li class="nav-item dropdown">
-           <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-1" 
-                   type="button" id="bd-theme" data-bs-toggle="dropdown" aria-expanded="false" title="Alternar tema">
-             <i id="themeIcon" class="bi bi-circle-half"></i>
-           </button>
-           <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="bd-theme">
-             <li>
-               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="light">
-                 <i class="bi bi-sun-fill text-warning"></i> Claro
-               </button>
-             </li>
-             <li>
-               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="dark">
-                 <i class="bi bi-moon-stars-fill text-primary"></i> Escuro
-               </button>
-             </li>
-             <li>
-               <button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="auto">
-                 <i class="bi bi-circle-half text-secondary"></i>  Acompanhar Sistema
-               </button>
-             </li>
-           </ul>
-         </li>
-         <li class="nav-item">
+        <li class="nav-item dropdown">
+          <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-1"
+                  type="button" id="bd-theme" data-bs-toggle="dropdown" aria-expanded="false" title="Alternar tema">
+            <i id="themeIcon" class="bi bi-circle-half"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="bd-theme">
+            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="light"><i class="bi bi-sun-fill text-warning"></i> Claro</button></li>
+            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill text-primary"></i> Escuro</button></li>
+            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="auto"><i class="bi bi-circle-half text-secondary"></i> Acompanhar Sistema</button></li>
+          </ul>
+        </li>
+
+        <li class="nav-item">
           <form method="post" action="{% url 'dashboard:alternar_privacidade' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-sm btn-outline-light" title="Modo privacidade — esconder valores">
@@ -73,30 +64,87 @@
             </button>
           </form>
         </li>
+
+        <!-- Sininho de notificações -->
         <li class="nav-item dropdown">
-          <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown">
+          <a class="nav-link position-relative"
+             href="#"
+             id="notificationDropdown"
+             role="button"
+             data-bs-toggle="dropdown"
+             aria-expanded="false"
+             aria-label="Notificações">
+
             <i class="bi bi-bell-fill"></i>
+
             {% if total_notificacoes_nao_lidas %}
               <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">
                 {{ total_notificacoes_nao_lidas }}
               </span>
             {% endif %}
           </a>
-          <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
-            <h6 class="dropdown-header px-0">Notificações</h6>
+
+          <div class="dropdown-menu dropdown-menu-end p-3 shadow"
+               aria-labelledby="notificationDropdown"
+               style="min-width:320px; max-width: min(92vw, 380px);">
+
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0">Notificações</h6>
+              {% if total_notificacoes_nao_lidas %}
+                <span class="badge bg-danger">
+                  {{ total_notificacoes_nao_lidas }} não lida(s)
+                </span>
+              {% endif %}
+            </div>
+
+            <hr class="my-2">
+
             {% for n in notificacoes_recentes %}
-              <div class="small mb-2 pb-2 border-bottom">{{ n.mensagem }}</div>
+              <div class="small mb-2 pb-2 border-bottom {% if n.lida %}opacity-75{% endif %}">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi {% if n.nivel == 'urgente' %}bi-exclamation-circle-fill text-danger{% elif n.nivel == 'alerta' %}bi-exclamation-triangle-fill text-warning{% else %}bi-info-circle-fill text-primary{% endif %} mt-1"></i>
+
+                  <div class="flex-grow-1">
+                    <div>{{ n.mensagem }}</div>
+
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-1">
+                      <span class="text-muted" style="font-size:0.72rem;">
+                        {{ n.criada_em|date:"d/m/Y H:i" }}
+                      </span>
+
+                      {% if n.lida %}
+                        <span class="badge bg-secondary">Lida</span>
+                      {% else %}
+                        <span class="badge bg-primary">Nova</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
             {% empty %}
-              <p class="small text-muted mb-0">Nenhuma notificação por aqui.</p>
+              <div class="text-center py-3">
+                <i class="bi bi-bell-slash fs-3 text-muted"></i>
+                <p class="small text-muted mb-0 mt-2">Nenhuma notificação por aqui.</p>
+              </div>
             {% endfor %}
+
             {% if total_notificacoes_nao_lidas %}
               <form method="post" action="{% url 'dashboard:marcar_notificacoes_lidas' %}" class="mt-2">
                 {% csrf_token %}
-                <button class="btn btn-sm btn-link p-0">Marcar todas como lidas</button>
+                <button class="btn btn-sm btn-outline-primary w-100" type="submit">
+                  <i class="bi bi-check2-all me-1"></i>Marcar todas como lidas
+                </button>
               </form>
+            {% endif %}
+
+            {% if notificacoes_recentes %}
+              <div class="text-muted text-center mt-2" style="font-size:0.72rem;">
+                Exibindo as 5 notificações mais recentes.
+              </div>
             {% endif %}
           </div>
         </li>
+
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
             <i class="bi bi-person-circle me-1"></i>{{ user.primeiro_nome }}
@@ -137,9 +185,7 @@
           </span>
         </div>
       </div>
-      <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-danger fw-bold">
-        Ver Extrato
-      </a>
+      <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-danger fw-bold">Ver Extrato</a>
     </div>
   {% endif %}
 
