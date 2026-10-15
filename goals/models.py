@@ -62,7 +62,7 @@ class Goal(models.Model):
 
     @property
     def data_arquivamento(self):
-        if not self.concluido_em:
+        if self.is_colchao_padrao or not self.concluido_em:
             return None
 
         return self.concluido_em + timedelta(days=10)
@@ -81,9 +81,16 @@ class Goal(models.Model):
         return max(0, ceil(segundos_restantes / 86400))
 
     def atualizar_status_conclusao(self):
-        """Atualiza a conclusão conforme o saldo atual."""
+        """Atualiza a conclusão sem concluir ou arquivar o colchão."""
 
         if self.arquivado_em:
+            return
+
+        # O colchão permanece ativo, independentemente do saldo.
+        if self.is_colchao_padrao:
+            if self.concluido_em:
+                self.concluido_em = None
+                self.save(update_fields=["concluido_em"])
             return
 
         saldo = self.valor_acumulado
@@ -139,8 +146,8 @@ class GoalWithdrawal(models.Model):
 
 def atualizar_objetivos_e_arquivar(usuario):
     """
-    Atualiza o status dos objetivos e arquiva os que foram concluídos
-    há pelo menos 10 dias, preservando seus registros financeiros.
+    Atualiza o status dos objetivos e arquiva os objetivos secundários
+    concluídos há pelo menos 10 dias, preservando seus registros.
     """
 
     objetivos = Goal.objects.filter(
@@ -155,6 +162,7 @@ def atualizar_objetivos_e_arquivar(usuario):
 
     objetivos_vencidos = Goal.objects.filter(
         usuario=usuario,
+        is_colchao_padrao=False,
         arquivado_em__isnull=True,
         concluido_em__isnull=False,
         concluido_em__lte=limite,
