@@ -1,20 +1,21 @@
 """UC14 — Varredura diária automática de vencimentos.
 
-Gera notificações preventivas para contas fixas e dívidas:
+Gera notificações para contas fixas e dívidas:
 - 5 dias antes do vencimento;
 - 2 dias antes do vencimento;
 - no dia do vencimento;
-- quando a parcela da dívida já está vencida.
+- após o vencimento, enquanto a obrigação continuar pendente.
 
-A varredura pode ser executada pelo management command
-varredura_vencimentos ou pelo middleware no primeiro acesso diário.
+A rotina pode ser executada pelo comando varredura_vencimentos
+ou pelo middleware no primeiro acesso autenticado do dia.
 """
 
 from __future__ import annotations
 
 import calendar
-from datetime import date, timedelta
+from datetime import date
 
+from django.db.models import F
 from django.utils import timezone
 
 from core.models import Notification
@@ -23,47 +24,35 @@ from core.models import Notification
 DIAS_DE_AVISO = (5, 2, 0)
 
 
-def _proxima_data_vencimento(
-    dia_vencimento: int,
-    referencia: date,
-) -> date:
-    """Encontra o próximo vencimento, ajustando meses mais curtos."""
-    ano = referencia.year
-    mes = referencia.month
-
-    for _ in range(2):
-        ultimo_dia = calendar.monthrange(ano, mes)[1]
-        dia = min(dia_vencimento, ultimo_dia)
-        candidata = date(ano, mes, dia)
-
-        if candidata >= referencia:
-            return candidata
-
-        mes += 1
-
-        if mes > 12:
-            mes = 1
-            ano += 1
-
-    return candidata
+def _data_vencimento(ano: int, mes: int, dia: int) -> date:
+    """Ajusta o dia para o último dia do mês quando necessário."""
+    ultimo_dia = calendar.monthrange(ano, mes)[1]
+    return date(ano, mes, min(dia, ultimo_dia))
 
 
-def _vencimento_mes_atual(
-    dia_vencimento: int,
-    referencia: date,
-) -> date:
-    """Calcula o vencimento da competência atual, inclusive se atrasado."""
-    ultimo_dia = calendar.monthrange(
+def _vencimento_conta(conta, referencia: date) -> date | None:
+    """Calcula o vencimento da ocorrência atual da conta recorrente."""
+    if conta.periodicidade == "anual":
+        if not conta.mes_vencimento:
+            return None
+
+        mes = conta.mes_vencimento
+    else:
+        mes = referencia.month
+
+    return _data_vencimento(
+        referencia.year,
+        mes,
+        conta.dia_vencimento,
+    )
+
+
+def _vencimento_mes_atual(dia_vencimento: int, referencia: date) -> date:
+    """Calcula o vencimento da dívida na competência atual."""
+    return _data_vencimento(
         referencia.year,
         referencia.month,
-    )[1]
-
-    dia = min(dia_vencimento, ultimo_dia)
-
-    return date(
-        referencia.year,
-        referencia.month,
-        dia,
+        dia_vencimento,
     )
 
 
@@ -77,44 +66,44 @@ def _formatar_valor(valor) -> str:
     )
 
 
-def _mensagem_conta(
-    nome: str,
-    valor,
-    dias_restantes: int,
-) -> str:
+def _mensagem_conta(nome: str, valor, vencimento: date, dias_restantes: int) -> str:
+    """Cria a mensagem correspondente à situação da conta fixa."""
     valor_fmt = _formatar_valor(valor)
+
+    if dias_restantes < 0:
+        return (
+            f"A conta de {nome} ({valor_fmt}) venceu em "
+            f"{vencimento:%d/%m/%Y} e continua pendente. "
+            "Confira a situação do pagamento."
+        )
 
     if dias_restantes == 0:
         return (
             f"Hoje vence a sua conta de {nome} ({valor_fmt}). "
-            "Se já pagou, pode ignorar este aviso."
+            "Se já pagou, confira se o pagamento foi registrado."
         )
 
     if dias_restantes == 2:
         return (
             f"Sua conta de {nome} ({valor_fmt}) vence "
-            "depois de amanhã. Que tal conferir sua folga de segurança?"
+            "depois de amanhã. Confira seu planejamento financeiro."
         )
 
     return (
-        f"Sua conta de {nome} ({valor_fmt}) "
-        f"vence em {dias_restantes} dias. Ainda dá tempo de se planejar."
+        f"Sua conta de {nome} ({valor_fmt}) vence em "
+        f"{dias_restantes} dias. Ainda dá tempo de se planejar."
     )
 
 
-def _mensagem_divida(
-    divida,
-    vencimento: date,
-    dias_restantes: int,
-) -> str:
-    """Monta a mensagem de acordo com a situação da parcela."""
+def _mensagem_divida(divida, vencimento: date, dias_restantes: int) -> str:
+    """Cria a mensagem correspondente à situação da dívida."""
     valor_fmt = _formatar_valor(divida.valor_parcela)
 
     if dias_restantes < 0:
         return (
-            f"A parcela de {divida.credor} ({valor_fmt}) "
-            f"venceu em {vencimento.strftime('%d/%m/%Y')} "
-            "e pode estar em atraso. Confira a situação do pagamento."
+            f"A parcela de {divida.credor} ({valor_fmt}) venceu em "
+            f"{vencimento:%d/%m/%Y} e pode estar em atraso. "
+            "Confira a situação do pagamento."
         )
 
     if dias_restantes == 0:
@@ -136,8 +125,76 @@ def _mensagem_divida(
     )
 
 
+def _atualizar_notificacao_existente(
+    notificacao: Notification,
+    mensagem: str,
+    nivel: str,
+    dias_restantes: int,
+) -> None:
+    """Atualiza o texto e reabre o aviso quando ele passa a estar atrasado."""
+    if notificacao.mensagem == mensagem and notificacao.nivel == nivel:
+        return
+
+    mensagem_anterior = notificacao.mensagem.lower()
+    estava_vencida = "venceu em" in mensagem_anterior
+
+    notificacao.mensagem = mensagem
+    notificacao.nivel = nivel
+
+    campos_atualizados = ["mensagem", "nivel"]
+
+    # Reabre o aviso somente na transição para atraso.
+    if dias_restantes < 0 and not estava_vencida:
+        notificacao.lida = False
+        campos_atualizados.append("lida")
+
+    notificacao.save(update_fields=campos_atualizados)
+
+
+def _registrar_aviso_conta(
+    user,
+    conta,
+    vencimento: date,
+    dias_restantes: int,
+) -> bool:
+    """Cria ou atualiza o aviso de uma ocorrência de conta fixa."""
+    chave = f"conta:{conta.pk}:{vencimento.isoformat()}"
+
+    mensagem = _mensagem_conta(
+        conta.nome_servico,
+        conta.valor,
+        vencimento,
+        dias_restantes,
+    )
+
+    nivel = (
+        Notification.Nivel.URGENTE
+        if dias_restantes <= 0
+        else Notification.Nivel.ALERTA
+    )
+
+    notificacao, criada = Notification.objects.get_or_create(
+        usuario=user,
+        chave_deduplicacao=chave,
+        defaults={
+            "mensagem": mensagem,
+            "nivel": nivel,
+        },
+    )
+
+    if not criada:
+        _atualizar_notificacao_existente(
+            notificacao,
+            mensagem,
+            nivel,
+            dias_restantes,
+        )
+
+    return criada
+
+
 def _pagamento_divida_no_mes(divida, referencia: date) -> bool:
-    """Verifica se há pagamento registrado no mês de referência."""
+    """Verifica se existe pagamento da dívida no mês de referência."""
     return divida.pagamentos.filter(
         data_pagamento__year=referencia.year,
         data_pagamento__month=referencia.month,
@@ -150,12 +207,7 @@ def _registrar_aviso_divida(
     vencimento: date,
     dias_restantes: int,
 ) -> bool:
-    """
-    Cria o aviso da dívida ou atualiza o aviso existente quando
-    a parcela passa da situação preventiva para vencida.
-
-    Retorna True somente quando uma nova notificação é criada.
-    """
+    """Cria ou atualiza o aviso da dívida sem duplicar a mesma ocorrência."""
     chave = f"divida:{divida.pk}:{vencimento.isoformat()}"
 
     mensagem = _mensagem_divida(
@@ -179,84 +231,73 @@ def _registrar_aviso_divida(
         },
     )
 
-    if criada:
-        return True
+    if not criada:
+        _atualizar_notificacao_existente(
+            notificacao,
+            mensagem,
+            nivel,
+            dias_restantes,
+        )
 
-    # Atualiza a mensagem antiga se a parcela passou a estar vencida.
-    if notificacao.mensagem != mensagem:
-        mensagem_anterior = notificacao.mensagem.lower()
-        estava_vencida = "venceu em" in mensagem_anterior
-
-        notificacao.mensagem = mensagem
-        notificacao.nivel = nivel
-
-        campos_atualizados = ["mensagem", "nivel"]
-
-        # Se o aviso preventivo virou aviso de atraso, volta a aparecer
-        # como não lido no sininho. Não o reabre diariamente.
-        if dias_restantes < 0 and not estava_vencida:
-            notificacao.lida = False
-            campos_atualizados.append("lida")
-
-        notificacao.save(update_fields=campos_atualizados)
-
-    return False
+    return criada
 
 
 def run_scan_for_user(user) -> int:
-    """Executa a varredura de um usuário e retorna novas notificações."""
+    """Executa a varredura de um usuário e retorna as notificações novas."""
     hoje = timezone.localdate()
     criadas = 0
 
     # ---------------------------------------------------------
     # CONTAS FIXAS
-    # Mantém o comportamento preventivo já existente.
+    # Utiliza o mesmo registro de ocorrência da Central de Avisos.
     # ---------------------------------------------------------
     contas = user.recorrencias.filter(ativo=True)
 
     for conta in contas:
-        vencimento = _proxima_data_vencimento(
-            conta.dia_vencimento,
-            hoje,
+        vencimento = _vencimento_conta(conta, hoje)
+
+        if vencimento is None:
+            continue
+
+        pagamento, _ = conta.pagamentos.get_or_create(
+            data_vencimento=vencimento,
+            defaults={
+                "valor": conta.valor,
+                "status": "pendente",
+            },
         )
+
+        # Contas já pagas não devem gerar notificações.
+        if pagamento.status == "pago":
+            continue
 
         dias_restantes = (vencimento - hoje).days
 
-        if dias_restantes not in DIAS_DE_AVISO:
+        # Avisos preventivos nos dias definidos e avisos após o vencimento.
+        if dias_restantes >= 0 and dias_restantes not in DIAS_DE_AVISO:
             continue
 
-        chave = f"conta:{conta.pk}:{vencimento.isoformat()}"
-
-        _, criada = Notification.objects.get_or_create(
-            usuario=user,
-            chave_deduplicacao=chave,
-            defaults={
-                "mensagem": _mensagem_conta(
-                    conta.nome_servico,
-                    conta.valor,
-                    dias_restantes,
-                ),
-                "nivel": (
-                    Notification.Nivel.URGENTE
-                    if dias_restantes == 0
-                    else Notification.Nivel.ALERTA
-                ),
-            },
+        criada = _registrar_aviso_conta(
+            user,
+            conta,
+            vencimento,
+            dias_restantes,
         )
 
         criadas += int(criada)
 
     # ---------------------------------------------------------
     # DÍVIDAS
-    # Agora também verifica vencimentos que já passaram.
+    # O modelo atual não armazena uma data individual para cada
+    # parcela; por isso, utiliza o dia cadastrado como referência.
     # ---------------------------------------------------------
-    dividas = user.dividas.filter(
-        quitada=False,
-        parcelas_pagas__lt=__import__(
-            "django.db.models",
-            fromlist=["F"],
-        ).F("total_parcelas"),
-    ).prefetch_related("pagamentos")
+    dividas = (
+        user.dividas.filter(
+            quitada=False,
+            parcelas_pagas__lt=F("total_parcelas"),
+        )
+        .prefetch_related("pagamentos")
+    )
 
     for divida in dividas:
         vencimento = _vencimento_mes_atual(
@@ -266,10 +307,10 @@ def run_scan_for_user(user) -> int:
 
         dias_restantes = (vencimento - hoje).days
 
-        # Evita alertar como vencida uma dívida cadastrada depois
-        # do vencimento deste mês, quando nenhuma parcela foi paga.
         criada_em = timezone.localtime(divida.criado_em).date()
 
+        # Não considerar atrasada uma dívida cadastrada depois
+        # do vencimento do mês, se nenhuma parcela foi paga.
         if (
             criada_em.year == hoje.year
             and criada_em.month == hoje.month
@@ -278,13 +319,10 @@ def run_scan_for_user(user) -> int:
         ):
             continue
 
-        # Não avisa sobre a parcela deste mês se já houve pagamento
-        # registrado no mês atual.
+        # Mantém a mesma regra já utilizada pela Central de Avisos.
         if _pagamento_divida_no_mes(divida, hoje):
             continue
 
-        # As parcelas atrasadas geram aviso independentemente
-        # da quantidade de dias decorridos.
         if dias_restantes >= 0 and dias_restantes not in DIAS_DE_AVISO:
             continue
 
