@@ -1,11 +1,10 @@
-"""Cliente da API HG Brasil Finance (https://hgbrasil.com/finance/),
-usada na página inicial após o login (UC08), conforme exigido pela
-arquitetura do projeto.
+"""Cliente da API HG Brasil Finance (https://hgbrasil.com/finance/).
 
-Plano gratuito: 400 requisições/dia. Por isso o resultado fica em cache
-por HGBRASIL_CACHE_TTL_SECONDS (15 minutos por padrão — mesmo intervalo
-de atualização das cotações informado pela própria HG Brasil), evitando
-estourar a cota mesmo com vários usuários abrindo o painel.
+Usado na página inicial após o login. Consulta cotações, bolsas e taxas
+financeiras, mantendo os resultados em cache para reduzir requisições.
+
+O cache é configurado por HGBRASIL_CACHE_TTL_SECONDS e usa 300 segundos
+(cinco minutos) como padrão.
 """
 
 from __future__ import annotations
@@ -20,71 +19,102 @@ logger = logging.getLogger(__name__)
 
 CACHE_KEY = "hgbrasil_finance_data"
 
+MOEDAS_DESEJADAS = {
+    "USD": "Dólar americano",
+    "EUR": "Euro",
+    "GBP": "Libra esterlina",
+    "ARS": "Peso argentino",
+}
 
-class HGBrasilIndisponivel(Exception):
-    pass
+
+def _dados_indisponiveis(motivo: str) -> dict:
+    """Monta uma resposta segura quando a consulta não está disponível."""
+    return {
+        "disponivel": False,
+        "motivo_indisponivel": motivo,
+        "moedas": [],
+        "bolsas": [],
+        "taxas": {},
+        "atualizado_em": None,
+    }
 
 
 def obter_dados_financeiros() -> dict:
-    """Retorna um dict pronto para o template do dashboard:
+    """Retorna cotações e indicadores financeiros para o dashboard.
 
+    Estrutura retornada:
         {
             "disponivel": bool,
             "motivo_indisponivel": str | None,
-            "moedas": [{"nome", "codigo", "compra", "venda", "variacao"}],
-            "bolsas": [{"nome", "pontos", "variacao"}],
+            "moedas": [
+                {
+                    "nome": str,
+                    "codigo": str,
+                    "compra": float | None,
+                    "venda": float | None,
+                    "variacao": float | None,
+                }
+            ],
+            "bolsas": [{"nome": str, "pontos": float, "variacao": float}],
             "taxas": {"selic": float, "cdi": float},
-            "atualizado_em": str,
+            "atualizado_em": str | None,
         }
 
-    Nunca levanta exceção: se a chave não estiver configurada ou a API
-    falhar, devolve disponivel=False com um motivo amigável, para o
-    dashboard seguir funcionando normalmente (RNF06 — disponibilidade).
+    Nunca propaga exceções para a página do dashboard.
     """
     cached = cache.get(CACHE_KEY)
-    if cached:
+    if cached is not None:
         return cached
 
     api_key = getattr(settings, "HGBRASIL_API_KEY", "")
     if not api_key:
-        return {
-            "disponivel": False,
-            "motivo_indisponivel": (
-                "Configure HGBRASIL_API_KEY no arquivo .env para ver cotações "
-                "em tempo real aqui (veja o README.md)."
-            ),
-            "moedas": [],
-            "bolsas": [],
-            "taxas": {},
-            "atualizado_em": None,
-        }
+        return _dados_indisponiveis(
+            "As cotações estão indisponíveis no momento. "
+            "Verifique a configuração da integração HG Brasil."
+        )
 
     try:
         resposta = requests.get(
-            settings.HGBRASIL_API_URL, params={"key": api_key}, timeout=6
+            settings.HGBRASIL_API_URL,
+            params={"key": api_key},
+            timeout=6,
         )
         resposta.raise_for_status()
         bruto = resposta.json()
-        resultados = bruto.get("results", {})
 
+        if not isinstance(bruto, dict):
+            raise ValueError("Resposta inválida da API HG Brasil.")
+
+        resultados = bruto.get("results") or {}
+        if not isinstance(resultados, dict):
+            raise ValueError("Formato de resultados inválido.")
+
+        # Seleciona apenas as quatro moedas desejadas, na ordem definida.
+        currencies = resultados.get("currencies") or {}
         moedas = []
-        for codigo, dados in (resultados.get("currencies") or {}).items():
-            if not isinstance(dados, dict) or codigo.upper() in ["SOURCE", "BRL"]:
+
+        for codigo, nome in MOEDAS_DESEJADAS.items():
+            dados = currencies.get(codigo)
+
+            if not isinstance(dados, dict):
                 continue
+
             moedas.append(
                 {
                     "codigo": codigo,
-                    "nome": dados.get("name", codigo),
+                    "nome": nome,
                     "compra": dados.get("buy"),
                     "venda": dados.get("sell"),
                     "variacao": dados.get("variation"),
                 }
             )
 
+        # Mantém a seleção de bolsas disponível no código original.
         bolsas = []
         for codigo, dados in (resultados.get("stocks") or {}).items():
             if not isinstance(dados, dict):
                 continue
+
             bolsas.append(
                 {
                     "codigo": codigo,
@@ -94,35 +124,50 @@ def obter_dados_financeiros() -> dict:
                 }
             )
 
+        # Extrai as taxas Selic e CDI.
         taxas_raw = resultados.get("taxes") or []
         taxas = {}
+
         for item in taxas_raw:
             if not isinstance(item, dict):
                 continue
-            nome = (item.get("name") or "").lower()
-            if "selic" in nome:
+
+            nome_taxa = (item.get("name") or "").lower()
+
+            if "selic" in nome_taxa:
                 taxas["selic"] = item.get("value")
-            elif "cdi" in nome:
+            elif "cdi" in nome_taxa:
                 taxas["cdi"] = item.get("value")
 
         dados_finais = {
             "disponivel": True,
             "motivo_indisponivel": None,
-            "moedas": moedas[:4],
+            "moedas": moedas,
             "bolsas": bolsas[:4],
             "taxas": taxas,
-            "atualizado_em": resultados.get("last_updated") or bruto.get("execution_time"),
+            "atualizado_em": (
+                resultados.get("last_updated")
+                or bruto.get("execution_time")
+            ),
         }
-        cache.set(CACHE_KEY, dados_finais, timeout=settings.HGBRASIL_CACHE_TTL_SECONDS)
+
+        tempo_cache = getattr(
+            settings,
+            "HGBRASIL_CACHE_TTL_SECONDS",
+            300,
+        )
+
+        cache.set(
+            CACHE_KEY,
+            dados_finais,
+            timeout=tempo_cache,
+        )
+
         return dados_finais
 
     except Exception:
         logger.exception("Falha ao consultar a API HG Brasil Finance")
-        return {
-            "disponivel": False,
-            "motivo_indisponivel": "Não conseguimos buscar as cotações agora. Tente novamente em instantes.",
-            "moedas": [],
-            "bolsas": [],
-            "taxas": {},
-            "atualizado_em": None,
-        }
+        return _dados_indisponiveis(
+            "Não conseguimos buscar as cotações agora. "
+            "Tente novamente em instantes."
+        )
