@@ -123,7 +123,10 @@ def guardar_troco(request, pk):
             valor = None
 
         if valor is None or not valor.is_finite() or valor <= 0:
-            messages.error(request, "Informe um valor válido para guardar.")
+            messages.error(
+                request,
+                "Informe um valor válido para guardar.",
+            )
             return redirect("goals:lista")
     else:
         form = ContribuicaoForm(request.POST)
@@ -163,7 +166,10 @@ def guardar_troco(request, pk):
             )
 
     except Exception:
-        logger.exception("Erro ao registrar contribuição no objetivo %s", pk)
+        logger.exception(
+            "Erro ao registrar contribuição no objetivo %s",
+            pk,
+        )
         messages.error(
             request,
             "Não foi possível registrar o valor. Tente novamente.",
@@ -200,7 +206,10 @@ def retirar_saldo(request, pk):
         try:
             valor = Decimal(valor_texto.replace(",", "."))
         except (InvalidOperation, AttributeError):
-            messages.error(request, "Informe um valor válido para retirar.")
+            messages.error(
+                request,
+                "Informe um valor válido para retirar.",
+            )
             return redirect("goals:lista")
 
         if not valor.is_finite() or valor <= 0:
@@ -285,7 +294,10 @@ def resetar_colchao(request):
         )
 
     except Exception:
-        logger.exception("Erro ao resetar o colchão do usuário %s", request.user.pk)
+        logger.exception(
+            "Erro ao resetar o colchão do usuário %s",
+            request.user.pk,
+        )
         messages.error(
             request,
             "Não foi possível resetar o colchão. Tente novamente.",
@@ -400,17 +412,37 @@ def excluir_objetivo(request, pk):
 
 @login_required
 def historico_objetivos(request):
-    """Exibe objetivos arquivados e seus registros financeiros."""
+    """Diagnóstico temporário da página de histórico."""
 
-    objetivos = Goal.objects.filter(
-        usuario=request.user,
-        arquivado_em__isnull=False,
-    ).order_by("-arquivado_em")
+    logger.info("DIAGNÓSTICO HISTÓRICO: função iniciada")
 
-    return render(
-        request,
-        "goals/historico.html",
-        {
-            "objetivos": objetivos,
-        },
-    )
+    try:
+        objetivos = list(
+            Goal.objects.filter(
+                usuario=request.user,
+                arquivado_em__isnull=False,
+            ).order_by("-arquivado_em")
+        )
+
+        logger.info(
+            "DIAGNÓSTICO HISTÓRICO: consulta OK; quantidade=%s",
+            len(objetivos),
+        )
+
+        resposta = render(
+            request,
+            "goals/historico.html",
+            {"objetivos": objetivos},
+        )
+
+        logger.info(
+            "DIAGNÓSTICO HISTÓRICO: template renderizado OK"
+        )
+        return resposta
+
+    except Exception:
+        logger.exception(
+            "DIAGNÓSTICO HISTÓRICO: erro para usuário %s",
+            request.user.pk,
+        )
+        raise
