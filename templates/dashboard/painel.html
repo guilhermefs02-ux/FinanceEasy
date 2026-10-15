@@ -209,15 +209,15 @@
   {% endif %}
 </div>
 
-<!-- Mercado agora: cotações em cards -->
+<!-- Mercado agora: cotações coloridas com bandeiras -->
 
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
-      <p class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-1"></i>Mercado agora</p>
+      <p class="fw-semibold mb-1"><i class="bi bi-graph-up-arrow me-1 text-primary"></i>Mercado agora</p>
       <p class="small text-muted mb-0">Acompanhe as principais moedas em relação ao real.</p>
     </div>
-    <span class="badge rounded-pill text-bg-light border">
+    <span class="badge rounded-pill border text-body" style="background: var(--fe-surface);">
       <i class="bi bi-clock me-1"></i>Atualização periódica
     </span>
   </div>
@@ -226,42 +226,89 @@
     <div class="row g-3">
       {% for moeda in hgbrasil.moedas %}
         <div class="col-12 col-sm-6 col-xl-3">
-          <div class="h-100 border rounded-3 p-3" style="border-color: var(--fe-border) !important; background: var(--fe-surface);">
-            <div class="d-flex align-items-center gap-2 mb-3">
-              <span class="d-inline-flex align-items-center justify-content-center rounded-circle border" style="width: 42px; height: 42px; font-size: 1.35rem; flex-shrink: 0;">
-                {% if moeda.codigo == "USD" %}🇺🇸
-                {% elif moeda.codigo == "EUR" %}🇪🇺
-                {% elif moeda.codigo == "GBP" %}🇬🇧
-                {% elif moeda.codigo == "ARS" %}🇦🇷
-                {% else %}💱
+          {% if moeda.codigo == "USD" %}
+            <div class="h-100 rounded-4 p-3 border" style="border-color: #bfdbfe !important; background: linear-gradient(145deg, #eff6ff, #ffffff); color: #1d4ed8;">
+          {% elif moeda.codigo == "EUR" %}
+            <div class="h-100 rounded-4 p-3 border" style="border-color: #ddd6fe !important; background: linear-gradient(145deg, #f5f3ff, #ffffff); color: #6d28d9;">
+          {% elif moeda.codigo == "GBP" %}
+            <div class="h-100 rounded-4 p-3 border" style="border-color: #fbcfe8 !important; background: linear-gradient(145deg, #fdf2f8, #ffffff); color: #be185d;">
+          {% elif moeda.codigo == "ARS" %}
+            <div class="h-100 rounded-4 p-3 border" style="border-color: #a7f3d0 !important; background: linear-gradient(145deg, #ecfdf5, #ffffff); color: #047857;">
+          {% else %}
+            <div class="h-100 rounded-4 p-3 border" style="border-color: var(--fe-border) !important; background: var(--fe-surface);">
+          {% endif %}
+
+            <div class="d-flex align-items-center gap-3 mb-4">
+              <div class="d-flex align-items-center justify-content-center rounded-3 bg-white border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0; border-color: rgba(0,0,0,.08) !important;">
+                {% if moeda.codigo == "USD" %}
+                  <img src="https://flagcdn.com/w80/us.png" alt="Bandeira dos Estados Unidos" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                  <span style="display:none;font-size:1.7rem;">🇺🇸</span>
+                {% elif moeda.codigo == "EUR" %}
+                  <img src="https://flagcdn.com/w80/eu.png" alt="Bandeira da União Europeia" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                  <span style="display:none;font-size:1.7rem;">🇪🇺</span>
+                {% elif moeda.codigo == "GBP" %}
+                  <img src="https://flagcdn.com/w80/gb.png" alt="Bandeira do Reino Unido" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                  <span style="display:none;font-size:1.7rem;">🇬🇧</span>
+                {% elif moeda.codigo == "ARS" %}
+                  <img src="https://flagcdn.com/w80/ar.png" alt="Bandeira da Argentina" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+                  <span style="display:none;font-size:1.7rem;">🇦🇷</span>
+                {% else %}
+                  <span style="font-size: 1.7rem;">💱</span>
                 {% endif %}
-              </span>
+              </div>
+
               <div class="min-w-0">
-                <p class="fw-semibold mb-0">{{ moeda.nome }}</p>
-                <p class="small text-muted mb-0">{{ moeda.codigo }} / BRL</p>
+                <p class="fw-bold mb-0 text-dark">{{ moeda.nome }}</p>
+                <p class="small mb-0 text-muted">{{ moeda.codigo }} / BRL</p>
               </div>
             </div>
 
-            <p class="small text-muted mb-1">Compra</p>
-            <p class="h5 fw-bold mb-3">R$ {{ moeda.compra|default:moeda.venda|default:"Indisponível" }}</p>
+            <p class="small text-muted mb-1">Cotação de compra</p>
+            <p class="h3 fw-bold mb-3" style="letter-spacing: -0.5px;">
+              {% if moeda.compra %}
+                R$ {{ moeda.compra }}
+              {% elif moeda.venda %}
+                R$ {{ moeda.venda }}
+              {% else %}
+                Indisponível
+              {% endif %}
+            </p>
 
             {% if moeda.venda %}
-              <div class="d-flex justify-content-between align-items-center small border-top pt-2" style="border-color: var(--fe-border) !important;">
+              <div class="d-flex justify-content-between align-items-center small border-top pt-2" style="border-color: rgba(0,0,0,.10) !important;">
                 <span class="text-muted">Venda</span>
-                <span class="fw-semibold">R$ {{ moeda.venda }}</span>
+                <span class="fw-bold text-dark">R$ {{ moeda.venda }}</span>
               </div>
             {% endif %}
 
             {% if moeda.variacao != None %}
-              <div class="mt-2 small text-muted">
-                <i class="bi bi-activity me-1"></i>Variação diária: {{ moeda.variacao }}%
+              <div class="mt-3">
+                {% if moeda.variacao > 0 %}
+                  <span class="badge rounded-pill px-2 py-2" style="background: #dcfce7; color: #166534;">
+                    <i class="bi bi-arrow-up-right me-1"></i>{{ moeda.variacao }}%
+                  </span>
+                  <span class="small text-muted ms-1">no dia</span>
+                {% elif moeda.variacao < 0 %}
+                  <span class="badge rounded-pill px-2 py-2" style="background: #fee2e2; color: #991b1b;">
+                    <i class="bi bi-arrow-down-right me-1"></i>{{ moeda.variacao }}%
+                  </span>
+                  <span class="small text-muted ms-1">no dia</span>
+                {% else %}
+                  <span class="badge rounded-pill px-2 py-2" style="background: #f3f4f6; color: #374151;">
+                    <i class="bi bi-dash-lg me-1"></i>{{ moeda.variacao }}%
+                  </span>
+                  <span class="small text-muted ms-1">no dia</span>
+                {% endif %}
               </div>
             {% endif %}
+
           </div>
         </div>
       {% empty %}
         <div class="col-12">
-          <p class="small text-muted mb-0">As cotações das moedas selecionadas não estão disponíveis neste momento.</p>
+          <div class="rounded-3 p-3" style="background: var(--fe-surface);">
+            <p class="small text-muted mb-0">As cotações das moedas selecionadas não estão disponíveis neste momento.</p>
+          </div>
         </div>
       {% endfor %}
     </div>
@@ -270,17 +317,19 @@
       <div class="row g-3 mt-1">
         {% if hgbrasil.taxas.selic %}
           <div class="col-6 col-md-3">
-            <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important;">
-              <p class="small text-muted mb-1"><i class="bi bi-bank me-1"></i>Selic</p>
-              <p class="h5 fw-bold mb-0">{{ hgbrasil.taxas.selic }}%</p>
+            <div class="border rounded-3 p-3 h-100" style="border-color: #bfdbfe !important; background: linear-gradient(145deg, #eff6ff, var(--fe-surface));">
+              <p class="small text-muted mb-1"><i class="bi bi-bank me-1 text-primary"></i>Taxa Selic</p>
+              <p class="h4 fw-bold mb-0 text-primary">{{ hgbrasil.taxas.selic }}%</p>
+              <p class="small text-muted mb-0 mt-1">Taxa básica de juros</p>
             </div>
           </div>
         {% endif %}
         {% if hgbrasil.taxas.cdi %}
           <div class="col-6 col-md-3">
-            <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important;">
-              <p class="small text-muted mb-1"><i class="bi bi-percent me-1"></i>CDI</p>
-              <p class="h5 fw-bold mb-0">{{ hgbrasil.taxas.cdi }}%</p>
+            <div class="border rounded-3 p-3 h-100" style="border-color: #a7f3d0 !important; background: linear-gradient(145deg, #ecfdf5, var(--fe-surface));">
+              <p class="small text-muted mb-1"><i class="bi bi-percent me-1 text-success"></i>Taxa CDI</p>
+              <p class="h4 fw-bold mb-0 text-success">{{ hgbrasil.taxas.cdi }}%</p>
+              <p class="small text-muted mb-0 mt-1">Referência para investimentos</p>
             </div>
           </div>
         {% endif %}
@@ -293,13 +342,15 @@
       </p>
       {% if hgbrasil.atualizado_em %}
         <p class="small text-muted mb-0">
-          <i class="bi bi-clock-history me-1"></i>Dados informados pela API: {{ hgbrasil.atualizado_em }}
+          <i class="bi bi-clock-history me-1"></i>Atualizado em: {{ hgbrasil.atualizado_em }}
         </p>
       {% endif %}
     </div>
   {% else %}
-    <div class="d-flex align-items-start gap-2 rounded-3 p-3" style="background: var(--fe-surface);">
-      <i class="bi bi-info-circle text-muted mt-1"></i>
+    <div class="d-flex align-items-start gap-3 rounded-3 p-3" style="background: var(--fe-surface);">
+      <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; flex-shrink: 0; background: rgba(13, 110, 253, .10);">
+        <i class="bi bi-info-circle text-primary fs-5"></i>
+      </div>
       <div>
         <p class="fw-semibold mb-1">Cotações temporariamente indisponíveis</p>
         <p class="small text-muted mb-0">{{ hgbrasil.motivo_indisponivel }}</p>
