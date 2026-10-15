@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 from collections import defaultdict
 
 from django.conf import settings
-from transactions.models import Transaction
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction as db_transaction
@@ -13,6 +12,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncYear
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from core.services.budget_alerts import verificar_limite_categoria
 from debts.models import Debt
@@ -28,7 +28,14 @@ from .forms import (
     ReceitaForm,
     RecurringBillForm,
 )
-from .models import Category, CategoryBudget, ImportBatch, RecurringBill, Transaction
+from .models import (
+    Category,
+    CategoryBudget,
+    ImportBatch,
+    RecurringBill,
+    RecurringBillPayment,
+    Transaction,
+)
 from .services.categorizer import sugerir_categoria
 from .services.import_parser import (
     ExtratoInvalidoError,
@@ -49,7 +56,6 @@ def registrar_receita(request):
             transacao.status = Transaction.Status.CONFIRMADA
             transacao.save()
 
-            # Geração de parcelas de receitas futuras.
             if transacao.tipo_recorrencia in [
                 Transaction.TipoRecorrencia.PARCELADA,
                 Transaction.TipoRecorrencia.FIXA,
@@ -175,10 +181,7 @@ def registrar_despesa(request):
 
 @login_required
 def lote_despesas(request):
-    """
-    Lançamento manual de várias despesas de uma vez,
-    sem precisar passar pela importação de extrato.
-    """
+    """Lançamento manual de várias despesas de uma vez."""
     if request.method == "POST":
         formset = LoteDespesaFormSet(
             request.POST,
@@ -257,16 +260,12 @@ def importar_extrato(request):
         if form.is_valid():
             arquivo = form.cleaned_data["arquivo"]
 
-            # Limite configurável no settings.py.
-            # Se a configuração não existir, utiliza 10 MB.
             limite_bytes = getattr(
                 settings,
                 "MAX_UPLOAD_SIZE_BYTES",
                 10 * 1024 * 1024,
             )
 
-            # Verifica o tamanho antes de interpretar o arquivo
-            # ou criar qualquer lote de importação.
             if arquivo.size > limite_bytes:
                 limite_mb = limite_bytes / (1024 * 1024)
 
@@ -285,7 +284,6 @@ def importar_extrato(request):
 
             tipo_conta = form.cleaned_data["tipo_conta"]
             cartao_divida = form.cleaned_data.get("cartao_divida")
-
             formato = formato_por_extensao(arquivo.name)
 
             if not formato:
@@ -519,10 +517,7 @@ def conciliar(request, batch_id):
                 )
 
                 if alerta:
-                    messages.warning(
-                        request,
-                        alerta["mensagem"],
-                    )
+                    messages.warning(request, alerta["mensagem"])
 
         sugestoes_dividas = _sugerir_baixas_de_divida(
             request.user,
@@ -586,10 +581,7 @@ def cancelar_importacao(request, batch_id):
 
 
 def _sugerir_baixas_de_divida(user, batch):
-    """
-    UC11/FA01 — Sugere a baixa de parcelas quando a descrição
-    de uma transação parece corresponder ao credor de uma dívida.
-    """
+    """Sugere baixas de parcelas de dívidas com base no extrato."""
     sugestoes = []
 
     dividas_ativas = list(
@@ -635,7 +627,6 @@ def extrato(request):
     except (ValueError, TypeError):
         mes_atual, ano_atual = hoje.month, hoje.year
 
-    # Evita meses inválidos nos filtros.
     if not 1 <= mes_atual <= 12:
         mes_atual = hoje.month
 
@@ -657,7 +648,6 @@ def extrato(request):
     ):
         qs = qs.filter(tipo=tipo)
 
-    # Comparativo: mês selecionado versus mês anterior.
     if mes_atual == 1:
         mes_anterior, ano_anterior = 12, ano_atual - 1
     else:
@@ -685,9 +675,7 @@ def extrato(request):
 
     if despesas_mes_anterior > 0:
         variacao_percentual = round(
-            float(
-                despesas_mes_atual - despesas_mes_anterior
-            )
+            float(despesas_mes_atual - despesas_mes_anterior)
             / float(despesas_mes_anterior)
             * 100
         )
@@ -802,6 +790,14 @@ def assinaturas(request):
         if form.is_valid():
             recorrencia = form.save(commit=False)
             recorrencia.usuario = request.user
+
+            # Para despesas mensais, o mês não se aplica.
+            if (
+                recorrencia.periodicidade
+                == RecurringBill.Periodicidade.MENSAL
+            ):
+                recorrencia.mes_vencimento = None
+
             recorrencia.save()
 
             messages.success(
@@ -848,12 +844,19 @@ def lote_despesas_fixas(request):
                     if not dados:
                         continue
 
+                    periodicidade = dados["periodicidade"]
+                    mes_vencimento = dados.get("mes_vencimento")
+
+                    if periodicidade == RecurringBill.Periodicidade.MENSAL:
+                        mes_vencimento = None
+
                     RecurringBill.objects.create(
                         usuario=request.user,
                         nome_servico=dados["nome_servico"],
                         categoria=dados["categoria"],
                         valor=dados["valor"],
-                        periodicidade=dados["periodicidade"],
+                        periodicidade=periodicidade,
+                        mes_vencimento=mes_vencimento,
                         dia_vencimento=dados["dia_vencimento"],
                     )
 
@@ -881,6 +884,79 @@ def lote_despesas_fixas(request):
         "transactions/lote_recorrencias.html",
         {"formset": formset},
     )
+
+
+@login_required
+def marcar_conta_fixa_paga(request, pagamento_id):
+    """
+    Marca um vencimento como pago.
+
+    Se já existir uma transação compatível, ela será vinculada ao pagamento
+    em vez de criar automaticamente outra despesa.
+    """
+    if request.method != "POST":
+        return redirect("transactions:assinaturas")
+
+    pagamento = get_object_or_404(
+        RecurringBillPayment.objects.select_related(
+            "conta",
+            "conta__categoria",
+            "transacao",
+        ),
+        pk=pagamento_id,
+        conta__usuario=request.user,
+    )
+
+    if pagamento.status == RecurringBillPayment.Status.PAGO:
+        messages.info(request, "Este vencimento já está marcado como pago.")
+        return redirect("transactions:assinaturas")
+
+    conta = pagamento.conta
+
+    # Procura uma transação já existente do mesmo usuário, com valor,
+    # data e categoria compatíveis. Isso ajuda a evitar duplicações.
+    transacao_existente = Transaction.objects.filter(
+        usuario=request.user,
+        tipo=Transaction.Tipo.DESPESA,
+        data=pagamento.data_vencimento,
+        valor=pagamento.valor,
+        categoria=conta.categoria,
+        status=Transaction.Status.CONFIRMADA,
+    ).order_by("criado_em").first()
+
+    with db_transaction.atomic():
+        if transacao_existente:
+            pagamento.transacao = transacao_existente
+        else:
+            transacao = Transaction.objects.create(
+                usuario=request.user,
+                tipo=Transaction.Tipo.DESPESA,
+                valor=pagamento.valor,
+                data=pagamento.data_vencimento,
+                categoria=conta.categoria,
+                descricao=f"Pagamento: {conta.nome_servico}",
+                origem=Transaction.Origem.MANUAL,
+                status=Transaction.Status.CONFIRMADA,
+                tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
+            )
+            pagamento.transacao = transacao
+
+        pagamento.status = RecurringBillPayment.Status.PAGO
+        pagamento.pago_em = timezone.now()
+        pagamento.save(
+            update_fields=[
+                "transacao",
+                "status",
+                "pago_em",
+            ]
+        )
+
+    messages.success(
+        request,
+        f"{conta.nome_servico} marcada como paga.",
+    )
+
+    return redirect("transactions:assinaturas")
 
 
 @login_required
@@ -1138,7 +1214,6 @@ def lancamentos_futuros_view(request):
 def comparativo_mensal(request):
     hoje = date.today().replace(day=1)
 
-    # Dados dos últimos 6 meses.
     meses_labels_6 = []
     receitas_data_6 = []
     despesas_data_6 = []
@@ -1176,7 +1251,6 @@ def comparativo_mensal(request):
         receitas_data_6.append(float(tot_rec))
         despesas_data_6.append(float(tot_desp))
 
-    # Dados dos últimos 12 meses.
     meses_labels_12 = []
     receitas_data_12 = []
     despesas_data_12 = []
@@ -1214,7 +1288,6 @@ def comparativo_mensal(request):
         receitas_data_12.append(float(tot_rec_12))
         despesas_data_12.append(float(tot_desp_12))
 
-    # Dados comparativos por ano.
     anos_qs = (
         Transaction.objects.filter(
             usuario=request.user,
@@ -1260,7 +1333,6 @@ def comparativo_mensal(request):
             receitas_anos_data.append(float(tot_rec_ano))
             despesas_anos_data.append(float(tot_desp_ano))
 
-    # Despesas por categoria no mês atual.
     mes_atual_inicio = hoje
     mes_atual_fim = (
         hoje
@@ -1272,10 +1344,7 @@ def comparativo_mensal(request):
         Transaction.objects.filter(
             usuario=request.user,
             tipo=Transaction.Tipo.DESPESA,
-            data__range=[
-                mes_atual_inicio,
-                mes_atual_fim,
-            ],
+            data__range=[mes_atual_inicio, mes_atual_fim],
             status=Transaction.Status.CONFIRMADA,
         )
         .values("categoria__nome")
@@ -1327,15 +1396,22 @@ def reajustar_grupo_recorrente(request, grupo_id):
         novo_valor = request.POST.get("novo_valor")
 
         if novo_valor:
-            transacoes_futuras.update(valor=novo_valor)
+            try:
+                valor_decimal = Decimal(novo_valor)
+                if valor_decimal <= 0:
+                    raise InvalidOperation
+            except (InvalidOperation, ValueError):
+                messages.error(request, "Informe um valor válido.")
+            else:
+                transacoes_futuras.update(valor=valor_decimal)
 
-            messages.success(
-                request,
-                "Todas as parcelas futuras foram reajustadas "
-                f"para R$ {novo_valor}!",
-            )
+                messages.success(
+                    request,
+                    f"Todas as parcelas futuras foram reajustadas "
+                    f"para R$ {valor_decimal}!",
+                )
 
-            return redirect("transactions:futuros")
+                return redirect("transactions:futuros")
 
     primeira = transacoes_futuras.first()
 
