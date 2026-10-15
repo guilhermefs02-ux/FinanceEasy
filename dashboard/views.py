@@ -4,10 +4,12 @@ from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from goals.models import Goal
-from transactions.models import Transaction
+from transactions.models import RecurringBillPayment, Transaction
 
 from .services.hgbrasil import obter_dados_financeiros
 
@@ -18,19 +20,23 @@ def _inicio_fim_mes(referencia: date):
     if referencia.month == 12:
         fim = date(referencia.year + 1, 1, 1) - timedelta(days=1)
     else:
-        fim = date(referencia.year, referencia.month + 1, 1) - timedelta(days=1)
+        fim = date(
+            referencia.year,
+            referencia.month + 1,
+            1,
+        ) - timedelta(days=1)
 
     return inicio, fim
 
 
 def _data_valida_vencimento(ano, mes, dia):
-    """Ajusta o dia ao último dia do mês, quando necessário."""
+    """Ajusta o vencimento para o último dia do mês, quando necessário."""
     ultimo_dia = monthrange(ano, mes)[1]
     return date(ano, mes, min(dia, ultimo_dia))
 
 
 def _proximo_vencimento_conta(conta, hoje):
-    """Calcula o próximo vencimento respeitando a periodicidade da conta."""
+    """Calcula o próximo vencimento futuro de uma conta."""
     if conta.periodicidade == "anual":
         mes = conta.mes_vencimento
 
@@ -75,30 +81,81 @@ def _proximo_vencimento_conta(conta, hoje):
     return vencimento
 
 
-def _proximas_contas(user, dias_janela=7):
-    """Busca contas fixas e dívidas próximas do vencimento."""
-    from core.services.due_date_scan import _proxima_data_vencimento
+def _vencimento_referencia_conta(conta, hoje):
+    """
+    Retorna o vencimento da competência atual, mesmo se já tiver passado.
+    """
+    if conta.periodicidade == "anual":
+        mes = conta.mes_vencimento
 
+        if not mes:
+            return None
+
+        return _data_valida_vencimento(
+            hoje.year,
+            mes,
+            conta.dia_vencimento,
+        )
+
+    return _data_valida_vencimento(
+        hoje.year,
+        hoje.month,
+        conta.dia_vencimento,
+    )
+
+
+def _central_de_avisos(user, dias_janela=7):
+    """
+    Monta a Central de Avisos com contas recorrentes e parcelas de dívidas.
+
+    Cada conta recorrente possui um registro de pagamento por vencimento.
+    O valor exibido é o valor integral da conta, inclusive nas anuais.
+    """
     hoje = date.today()
     limite = hoje + timedelta(days=dias_janela)
-    itens = []
 
+    avisos_vencidos = []
+    avisos_a_vencer = []
+
+    # Contas fixas e assinaturas mensais ou anuais.
     for conta in user.recorrencias.filter(ativo=True):
-        vencimento = _proximo_vencimento_conta(conta, hoje)
+        vencimento = _vencimento_referencia_conta(conta, hoje)
 
         if vencimento is None:
             continue
 
-        if hoje <= vencimento <= limite:
-            itens.append(
-                {
-                    "tipo": "conta",
-                    "nome": conta.nome_servico,
-                    "valor": conta.valor,
-                    "vencimento": vencimento,
-                    "categoria": conta.categoria,
-                }
-            )
+        # Cria o registro da ocorrência, se ainda não existir.
+        # A restrição única do modelo impede duplicar o mesmo vencimento.
+        pagamento, _ = conta.pagamentos.get_or_create(
+            data_vencimento=vencimento,
+            defaults={
+                "valor": conta.valor,
+                "status": "pendente",
+            },
+        )
+
+        # Uma ocorrência paga não aparece como pendente.
+        if pagamento.status == "pago":
+            continue
+
+        item = {
+            "tipo": "conta",
+            "periodicidade": conta.periodicidade,
+            "nome": conta.nome_servico,
+            "valor": conta.valor,
+            "vencimento": vencimento,
+            "categoria": conta.categoria,
+            "conta": conta,
+            "pagamento": pagamento,
+        }
+
+        if vencimento < hoje:
+            avisos_vencidos.append(item)
+        elif vencimento <= limite:
+            avisos_a_vencer.append(item)
+
+    # Dívidas e parcelas continuam sendo tratadas separadamente.
+    from core.services.due_date_scan import _proxima_data_vencimento
 
     for divida in user.dividas.filter(quitada=False):
         vencimento = _proxima_data_vencimento(
@@ -106,19 +163,33 @@ def _proximas_contas(user, dias_janela=7):
             hoje,
         )
 
-        if hoje <= vencimento <= limite:
-            itens.append(
-                {
-                    "tipo": "divida",
-                    "nome": divida.credor,
-                    "valor": divida.valor_parcela,
-                    "vencimento": vencimento,
-                    "categoria": None,
-                }
-            )
+        item = {
+            "tipo": "divida",
+            "periodicidade": "parcela",
+            "nome": divida.credor,
+            "valor": divida.valor_parcela,
+            "vencimento": vencimento,
+            "categoria": None,
+            "conta": None,
+            "pagamento": None,
+            "divida": divida,
+        }
 
-    itens.sort(key=lambda item: item["vencimento"])
-    return itens
+        if vencimento < hoje:
+            avisos_vencidos.append(item)
+        elif vencimento <= limite:
+            avisos_a_vencer.append(item)
+
+    avisos_vencidos.sort(key=lambda item: item["vencimento"])
+    avisos_a_vencer.sort(key=lambda item: item["vencimento"])
+
+    return {
+        "vencidos": avisos_vencidos,
+        "a_vencer": avisos_a_vencer,
+        "total_vencidos": len(avisos_vencidos),
+        "total_a_vencer": len(avisos_a_vencer),
+        "total_avisos": len(avisos_vencidos) + len(avisos_a_vencer),
+    }
 
 
 @login_required
@@ -166,13 +237,18 @@ def painel(request):
 
     saldo_disponivel = receitas_confirmadas - despesas_confirmadas
 
-    proximas_contas = _proximas_contas(
+    # Central de Avisos.
+    central_avisos = _central_de_avisos(
         request.user,
         dias_janela=7,
     )
 
+    # Apenas avisos futuros entram no cálculo da sobra segura.
     total_a_vencer_7_dias = sum(
-        (item["valor"] for item in proximas_contas),
+        (
+            item["valor"]
+            for item in central_avisos["a_vencer"]
+        ),
         start=Decimal("0"),
     )
 
@@ -192,7 +268,10 @@ def painel(request):
     )
 
     maior_categoria_total = max(
-        (categoria["total"] for categoria in top_categorias),
+        (
+            categoria["total"]
+            for categoria in top_categorias
+        ),
         default=Decimal("0"),
     )
 
@@ -252,7 +331,12 @@ def painel(request):
         "total_despesas": total_despesas,
         "saldo_disponivel": saldo_disponivel,
         "sobra_segura": sobra_segura,
-        "proximas_contas": proximas_contas,
+        "central_avisos": central_avisos,
+        "avisos_vencidos": central_avisos["vencidos"],
+        "avisos_a_vencer": central_avisos["a_vencer"],
+        "total_vencidos": central_avisos["total_vencidos"],
+        "total_a_vencer": central_avisos["total_a_vencer"],
+        "total_avisos": central_avisos["total_avisos"],
         "top_categorias": top_categorias,
         "maior_categoria_total": maior_categoria_total,
         "hgbrasil": dados_hgbrasil,
@@ -272,13 +356,38 @@ def painel(request):
 
 
 @login_required
+@require_POST
+def marcar_conta_paga(request, pagamento_id):
+    """
+    Marca como paga somente a ocorrência de vencimento selecionada.
+    Não altera os vencimentos futuros da conta recorrente.
+    """
+    pagamento = get_object_or_404(
+        RecurringBillPayment.objects.select_related("conta"),
+        pk=pagamento_id,
+        conta__usuario=request.user,
+    )
+
+    if pagamento.status != "pago":
+        pagamento.status = "pago"
+        pagamento.pago_em = timezone.now()
+        pagamento.save(update_fields=["status", "pago_em"])
+
+    return redirect("dashboard:painel")
+
+
+@login_required
 def alternar_privacidade(request):
-    """FA01 — Modo Privacidade ('Olho Fechado'), RNF13."""
+    """Alterna o modo de privacidade do painel."""
     if request.method == "POST":
         atual = request.session.get("privacy_mode_on", False)
         request.session["privacy_mode_on"] = not atual
 
-    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
+    proximo = (
+        request.META.get("HTTP_REFERER")
+        or "dashboard:painel"
+    )
+
     return redirect(proximo)
 
 
@@ -287,5 +396,9 @@ def marcar_notificacoes_lidas(request):
     if request.method == "POST":
         request.user.notificacoes.filter(lida=False).update(lida=True)
 
-    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
+    proximo = (
+        request.META.get("HTTP_REFERER")
+        or "dashboard:painel"
+    )
+
     return redirect(proximo)
