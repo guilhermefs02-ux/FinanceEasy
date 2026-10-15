@@ -5,7 +5,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ContribuicaoForm, GoalForm
@@ -71,7 +70,7 @@ def lista_objetivos(request):
 
         messages.error(
             request,
-            "Confira os dados informados para criar o objetivo.",
+            "Confira os dados informados para criar um objetivo.",
         )
 
     atalhos = [
@@ -126,7 +125,6 @@ def guardar_troco(request, pk):
         if valor is None or not valor.is_finite() or valor <= 0:
             messages.error(request, "Informe um valor válido para guardar.")
             return redirect("goals:lista")
-
     else:
         form = ContribuicaoForm(request.POST)
 
@@ -238,10 +236,59 @@ def retirar_saldo(request, pk):
         f'"{objetivo.nome}".',
     )
 
-    if objetivo.concluido_em is None and saldo_atual >= objetivo.valor_alvo:
-        messages.info(
+    return redirect("goals:lista")
+
+
+@login_required
+@require_POST
+def resetar_colchao(request):
+    """Zera o saldo do colchão registrando uma retirada no histórico."""
+
+    try:
+        with transaction.atomic():
+            colchao = get_object_or_404(
+                Goal.objects.select_for_update(),
+                usuario=request.user,
+                is_colchao_padrao=True,
+                arquivado_em__isnull=True,
+            )
+
+            saldo_atual = colchao.valor_acumulado
+
+            if saldo_atual < Decimal("0.00"):
+                messages.error(
+                    request,
+                    "O saldo do colchão está negativo. Confira as movimentações "
+                    "antes de resetar a meta.",
+                )
+                return redirect("goals:lista")
+
+            if saldo_atual == Decimal("0.00"):
+                messages.info(
+                    request,
+                    "O colchão já está com saldo zerado.",
+                )
+                return redirect("goals:lista")
+
+            GoalWithdrawal.objects.create(
+                objetivo=colchao,
+                valor=saldo_atual,
+            )
+
+            colchao.refresh_from_db()
+            colchao.atualizar_status_conclusao()
+
+        messages.success(
             request,
-            "O saldo do objetivo foi atualizado.",
+            f"Colchão resetado. A retirada de R$ {saldo_atual:.2f} "
+            "foi registrada e o histórico anterior foi preservado.",
+        )
+
+    except Exception:
+        logger.exception("Erro ao resetar o colchão do usuário %s", request.user.pk)
+        messages.error(
+            request,
+            "Não foi possível resetar o colchão. Tente novamente.",
         )
 
     return redirect("goals:lista")
@@ -330,7 +377,7 @@ def editar_objetivo(request, pk):
 @login_required
 @require_POST
 def excluir_objetivo(request, pk):
-    """Exclui um objetivo secundário ativo, conforme a função atual."""
+    """Exclui um objetivo secundário ativo."""
 
     objetivo = get_object_or_404(
         Goal,
@@ -340,20 +387,12 @@ def excluir_objetivo(request, pk):
         arquivado_em__isnull=True,
     )
 
-    if objetivo.concluido_em:
-        messages.warning(
-            request,
-            "Este objetivo está concluído e não pode ser excluído "
-            "durante o período de espera para arquivamento.",
-        )
-        return redirect("goals:lista")
-
     nome = objetivo.nome
     objetivo.delete()
 
     messages.success(
         request,
-        f'O objetivo "{nome}" foi excluído.',
+        f'O objetivo "{nome}" e suas movimentações foram excluídos.',
     )
 
     return redirect("goals:lista")
