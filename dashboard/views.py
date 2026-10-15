@@ -1,3 +1,4 @@
+from calendar import monthrange
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -22,8 +23,60 @@ def _inicio_fim_mes(referencia: date):
     return inicio, fim
 
 
+def _data_valida_vencimento(ano, mes, dia):
+    """Ajusta o dia ao último dia do mês, quando necessário."""
+    ultimo_dia = monthrange(ano, mes)[1]
+    return date(ano, mes, min(dia, ultimo_dia))
+
+
+def _proximo_vencimento_conta(conta, hoje):
+    """Calcula o próximo vencimento respeitando a periodicidade da conta."""
+    if conta.periodicidade == "anual":
+        mes = conta.mes_vencimento
+
+        if not mes:
+            return None
+
+        vencimento = _data_valida_vencimento(
+            hoje.year,
+            mes,
+            conta.dia_vencimento,
+        )
+
+        if vencimento < hoje:
+            vencimento = _data_valida_vencimento(
+                hoje.year + 1,
+                mes,
+                conta.dia_vencimento,
+            )
+
+        return vencimento
+
+    vencimento = _data_valida_vencimento(
+        hoje.year,
+        hoje.month,
+        conta.dia_vencimento,
+    )
+
+    if vencimento < hoje:
+        if hoje.month == 12:
+            ano_seguinte = hoje.year + 1
+            mes_seguinte = 1
+        else:
+            ano_seguinte = hoje.year
+            mes_seguinte = hoje.month + 1
+
+        vencimento = _data_valida_vencimento(
+            ano_seguinte,
+            mes_seguinte,
+            conta.dia_vencimento,
+        )
+
+    return vencimento
+
+
 def _proximas_contas(user, dias_janela=7):
-    """Busca contas fixas, assinaturas e parcelas de dívidas próximas do vencimento."""
+    """Busca contas fixas e dívidas próximas do vencimento."""
     from core.services.due_date_scan import _proxima_data_vencimento
 
     hoje = date.today()
@@ -31,17 +84,17 @@ def _proximas_contas(user, dias_janela=7):
     itens = []
 
     for conta in user.recorrencias.filter(ativo=True):
-        vencimento = _proxima_data_vencimento(
-            conta.dia_vencimento,
-            hoje,
-        )
+        vencimento = _proximo_vencimento_conta(conta, hoje)
+
+        if vencimento is None:
+            continue
 
         if hoje <= vencimento <= limite:
             itens.append(
                 {
                     "tipo": "conta",
                     "nome": conta.nome_servico,
-                    "valor": conta.valor_mensalizado,
+                    "valor": conta.valor,
                     "vencimento": vencimento,
                     "categoria": conta.categoria,
                 }
@@ -150,7 +203,6 @@ def painel(request):
         is_colchao_padrao=True,
     ).first()
 
-    # Carrega todos os objetivos do usuário.
     objetivos = list(
         Goal.objects.filter(
             usuario=request.user,
@@ -162,7 +214,6 @@ def painel(request):
 
     total_acumulado_objetivos = Decimal("0")
 
-    # Calcula os valores e guarda o saldo para ordenar os objetivos.
     for objetivo in objetivos:
         acumulado = objetivo.valor_acumulado
 
@@ -171,15 +222,9 @@ def painel(request):
             Decimal("0"),
         )
 
-        # Atributo auxiliar usado somente para ordenar.
-        # Não altera a propriedade valor_acumulado do modelo.
         objetivo._acumulado_ordem = acumulado
-
         total_acumulado_objetivos += acumulado
 
-    # O colchão padrão permanece sempre primeiro.
-    # Os demais objetivos ficam em ordem decrescente de saldo acumulado.
-    # Em caso de empate, prevalece a data de criação.
     objetivos.sort(
         key=lambda objetivo: (
             not objetivo.is_colchao_padrao,
