@@ -52,6 +52,32 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Limites de upload e importação de arquivos
+# ---------------------------------------------------------------------------
+
+# Tamanho máximo permitido por arquivo: 10 MB.
+# Pode ser alterado pela variável de ambiente DJANGO_MAX_UPLOAD_SIZE_MB.
+MAX_UPLOAD_SIZE_MB = int(
+    os.getenv("DJANGO_MAX_UPLOAD_SIZE_MB", "10")
+)
+
+MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+# Limite do corpo completo da requisição HTTP: 12 MB.
+# Deve ser superior ao limite individual para permitir multipart/form-data.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.getenv("DJANGO_MAX_REQUEST_SIZE_MB", "12")
+) * 1024 * 1024
+
+# Número máximo de campos de formulário aceitos em uma requisição.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+
+# Arquivos acima de aproximadamente 2,5 MB são encaminhados
+# para arquivo temporário, reduzindo o uso de memória.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -106,7 +132,10 @@ TEMPLATES = [
 WSGI_APPLICATION = "financeeasy.wsgi.application"
 
 
+# ---------------------------------------------------------------------------
 # Database
+# ---------------------------------------------------------------------------
+
 # Usa PostgreSQL quando DATABASE_URL estiver configurada.
 # Sem essa variável, mantém SQLite para desenvolvimento local.
 
@@ -139,7 +168,11 @@ else:
 # Usuário customizado (login por e-mail — RF02)
 AUTH_USER_MODEL = "accounts.User"
 
+
+# ---------------------------------------------------------------------------
 # Segurança de senhas
+# ---------------------------------------------------------------------------
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -163,6 +196,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
             "django.contrib.auth.password_validation."
+            "CommonPasswordValidator"
+        ),
+    },
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
             "NumericPasswordValidator"
         ),
     },
@@ -173,14 +212,20 @@ LOGIN_REDIRECT_URL = "dashboard:painel"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 
+# ---------------------------------------------------------------------------
 # Internationalization
+# ---------------------------------------------------------------------------
+
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# ---------------------------------------------------------------------------
+# Static files e arquivos enviados
+# ---------------------------------------------------------------------------
+
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -191,8 +236,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
+# ---------------------------------------------------------------------------
 # Cache simples em memória — usado para não estourar a cota diária
 # da API gratuita da HG Brasil.
+# ---------------------------------------------------------------------------
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -219,7 +267,11 @@ HUGGINGFACE_ZERO_SHOT_MODEL = os.getenv(
     "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
 )
 
-# E-mail (recuperação de senha via OTP)
+
+# ---------------------------------------------------------------------------
+# E-mail — recuperação de senha via OTP
+# ---------------------------------------------------------------------------
+
 EMAIL_BACKEND = os.getenv(
     "DJANGO_EMAIL_BACKEND",
     "django.core.mail.backends.console.EmailBackend",
