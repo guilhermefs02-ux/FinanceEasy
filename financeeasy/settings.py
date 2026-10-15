@@ -139,6 +139,7 @@ else:
 # Usuário customizado (login por e-mail — RF02)
 AUTH_USER_MODEL = "accounts.User"
 
+# Segurança de senhas
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": (
@@ -151,7 +152,7 @@ AUTH_PASSWORD_VALIDATORS = [
             "django.contrib.auth.password_validation."
             "MinimumLengthValidator"
         ),
-        "OPTIONS": {"min_length": 8},
+        "OPTIONS": {"min_length": 12},
     },
     {
         "NAME": (
