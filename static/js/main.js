@@ -72,7 +72,6 @@ document.addEventListener("DOMContentLoaded", function () {
       sobreposicaoMenu.addEventListener("click", fecharMenu);
     }
 
-    // Fecha o menu ao escolher uma opção de navegação.
     menuLateral.querySelectorAll("a").forEach(function (link) {
       link.addEventListener("click", function () {
         if (window.innerWidth < 992) {
@@ -81,14 +80,12 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
 
-    // Fecha o menu ao pressionar Esc.
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") {
         fecharMenu();
       }
     });
 
-    // Evita que o menu fique aberto ao mudar para desktop.
     window.addEventListener("resize", function () {
       if (window.innerWidth >= 992) {
         fecharMenu();
@@ -104,42 +101,78 @@ document.addEventListener("DOMContentLoaded", function () {
   var mediaQueryOS = window.matchMedia("(prefers-color-scheme: dark)");
 
   function getStoredTheme() {
-    return localStorage.getItem("fe-theme") || "auto";
+    var saved = localStorage.getItem("fe-theme");
+
+    if (["light", "dark", "auto"].includes(saved)) {
+      return saved;
+    }
+
+    // Compatibilidade com a preferência salva anteriormente.
+    var legacy = localStorage.getItem("theme");
+
+    if (["light", "dark"].includes(legacy)) {
+      return legacy;
+    }
+
+    return "auto";
   }
 
   function applyTheme(theme) {
     if (!htmlPage) return;
 
-    var temaEfetivo = theme;
+    var temaEfetivo =
+      theme === "auto"
+        ? mediaQueryOS.matches
+          ? "dark"
+          : "light"
+        : theme;
 
-    if (theme === "auto") {
-      temaEfetivo = mediaQueryOS.matches ? "dark" : "light";
-    }
-
+    // Aplica o tema utilizado pelo Bootstrap e pelo FinanceEasy.
     htmlPage.setAttribute("data-bs-theme", temaEfetivo);
+    htmlPage.setAttribute("data-theme", temaEfetivo);
 
+    // Atualiza o ícone do botão superior.
     if (themeIcon) {
-      themeIcon.className =
-        temaEfetivo === "dark"
-          ? "bi bi-moon-stars-fill fs-5"
-          : tema === "auto"
-            ? "bi bi-circle-half fs-5"
-            : "bi bi-sun-fill fs-5";
+      if (theme === "auto") {
+        themeIcon.className = "bi bi-circle-half fs-5";
+      } else if (temaEfetivo === "dark") {
+        themeIcon.className = "bi bi-moon-stars-fill fs-5";
+      } else {
+        themeIcon.className = "bi bi-sun-fill fs-5";
+      }
     }
+
+    // Atualiza o estado dos botões nos dois menus.
+    document.querySelectorAll("[data-bs-theme-value]").forEach(function (button) {
+      var selecionado =
+        button.getAttribute("data-bs-theme-value") === theme;
+
+      button.setAttribute("aria-checked", selecionado ? "true" : "false");
+
+      if (selecionado) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
+      }
+    });
   }
 
   function setTheme(theme) {
-    if (theme === "auto") {
-      localStorage.removeItem("fe-theme");
-    } else {
-      localStorage.setItem("fe-theme", theme);
+    if (!["light", "dark", "auto"].includes(theme)) {
+      return;
     }
+
+    // Mantém as duas chaves sincronizadas para compatibilidade.
+    localStorage.setItem("fe-theme", theme);
+    localStorage.setItem("theme", theme);
 
     applyTheme(theme);
   }
 
+  // Aplica a preferência salva ao carregar a página.
   applyTheme(getStoredTheme());
 
+  // Atualiza automaticamente quando o tema do sistema muda.
   if (mediaQueryOS.addEventListener) {
     mediaQueryOS.addEventListener("change", function () {
       if (getStoredTheme() === "auto") {
@@ -147,7 +180,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   } else if (mediaQueryOS.addListener) {
-    // Compatibilidade com navegadores antigos.
     mediaQueryOS.addListener(function () {
       if (getStoredTheme() === "auto") {
         applyTheme("auto");
@@ -155,13 +187,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  document.querySelectorAll("[data-bs-theme-value]").forEach(function (element) {
-    element.addEventListener("click", function () {
-      var selectedTheme = this.getAttribute("data-bs-theme-value");
+  // Ativa os botões de tema existentes nos dois menus.
+  document.querySelectorAll("[data-bs-theme-value]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      var temaSelecionado = button.getAttribute("data-bs-theme-value");
 
-      if (["light", "dark", "auto"].includes(selectedTheme)) {
-        setTheme(selectedTheme);
-      }
+      setTheme(temaSelecionado);
     });
   });
 
