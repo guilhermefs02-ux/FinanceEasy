@@ -1,207 +1,351 @@
+**Arquivo:** `templates/base.html`
+
 {% load static %}
 {% load finance_extras %}
 <!DOCTYPE html>
 <html lang="pt-br" id="htmlPage" data-bs-theme="light">
 <head>
   <script>
-  (function() {
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const themeToApply = savedTheme || (systemPrefersDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', themeToApply);
-  })();
+    (function () {
+      try {
+        const savedTheme = localStorage.getItem("fe-theme");
+        const legacyTheme = localStorage.getItem("theme");
+        const theme = savedTheme || legacyTheme || "auto";
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const effectiveTheme = theme === "auto"
+          ? (prefersDark ? "dark" : "light")
+          : theme;
+
+        document.documentElement.setAttribute("data-bs-theme", effectiveTheme);
+        document.documentElement.setAttribute("data-theme", effectiveTheme);
+      } catch (error) {
+        document.documentElement.setAttribute("data-bs-theme", "light");
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
   </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}FinanceEasy{% endblock %}</title>
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
-<body>
 
+<body>
 {% if user.is_authenticated %}
-<nav class="navbar navbar-expand-lg navbar-fe sticky-top">
-  <div class="container">
-    <a class="navbar-brand" href="{% url 'dashboard:painel' %}">
-      <i class="bi bi-piggy-bank-fill me-1"></i>FinanceEasy
+
+{% url 'dashboard:mercado' as mercado_url %}
+
+<div class="fe-sidebar-overlay" id="sidebarOverlay"></div>
+
+<aside class="fe-sidebar" id="feSidebar" aria-label="Menu principal">
+  <a class="fe-sidebar-brand" href="{% url 'dashboard:painel' %}">
+    <span class="fe-sidebar-brand-icon">
+      <i class="bi bi-piggy-bank-fill"></i>
+    </span>
+    <span>FinanceEasy</span>
+  </a>
+
+  <div class="fe-sidebar-section-label">PRINCIPAL</div>
+
+  <nav class="fe-sidebar-nav">
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'painel' %}active{% endif %}"
+       href="{% url 'dashboard:painel' %}">
+      <i class="bi bi-grid-1x2-fill"></i>
+      <span>Painel</span>
     </a>
 
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" style="border-color: rgba(255,255,255,0.5);">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+    {% if mercado_url %}
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'mercado' %}active{% endif %}"
+       href="{{ mercado_url }}">
+      <i class="bi bi-graph-up-arrow"></i>
+      <span>Mercado</span>
+    </a>
+    {% endif %}
 
-    <div class="collapse navbar-collapse" id="navMenu">
-      <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link {% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:painel' %}">Painel</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:extrato' %}">Extrato</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'debts:lista' %}">Dívidas</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'goals:lista' %}">Objetivos</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:assinaturas' %}">Despesas Fixas</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:futuros' %}">Futuros</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'transactions:comparativo_mensal' %}">Gráficos</a></li>
-      </ul>
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'extrato' %}active{% endif %}"
+       href="{% url 'transactions:extrato' %}">
+      <i class="bi bi-receipt"></i>
+      <span>Extrato</span>
+    </a>
 
-      <ul class="navbar-nav align-items-lg-center gap-lg-2">
-        <li class="nav-item dropdown">
-          <button class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-1"
-                  type="button" id="bd-theme" data-bs-toggle="dropdown" aria-expanded="false" title="Alternar tema">
-            <i id="themeIcon" class="bi bi-circle-half"></i>
+    <a class="fe-sidebar-link {% if request.resolver_match.namespace == 'debts' %}active{% endif %}"
+       href="{% url 'debts:lista' %}">
+      <i class="bi bi-credit-card-2-front"></i>
+      <span>Dívidas</span>
+    </a>
+
+    <a class="fe-sidebar-link {% if request.resolver_match.namespace == 'goals' %}active{% endif %}"
+       href="{% url 'goals:lista' %}">
+      <i class="bi bi-bullseye"></i>
+      <span>Objetivos</span>
+    </a>
+  </nav>
+
+  <div class="fe-sidebar-section-label">PLANEJAMENTO</div>
+
+  <nav class="fe-sidebar-nav">
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'assinaturas' %}active{% endif %}"
+       href="{% url 'transactions:assinaturas' %}">
+      <i class="bi bi-arrow-repeat"></i>
+      <span>Despesas fixas</span>
+    </a>
+
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'futuros' %}active{% endif %}"
+       href="{% url 'transactions:futuros' %}">
+      <i class="bi bi-calendar2-week"></i>
+      <span>Lançamentos futuros</span>
+    </a>
+
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'comparativo_mensal' %}active{% endif %}"
+       href="{% url 'transactions:comparativo_mensal' %}">
+      <i class="bi bi-bar-chart-line"></i>
+      <span>Gráficos</span>
+    </a>
+
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'categorias' %}active{% endif %}"
+       href="{% url 'transactions:categorias' %}">
+      <i class="bi bi-tags"></i>
+      <span>Categorias</span>
+    </a>
+
+    <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'orcamentos' %}active{% endif %}"
+       href="{% url 'transactions:orcamentos' %}">
+      <i class="bi bi-wallet2"></i>
+      <span>Limites por categoria</span>
+    </a>
+  </nav>
+
+  <div class="fe-sidebar-bottom">
+    <div class="dropdown">
+      <button class="fe-sidebar-link w-100 border-0"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false">
+        <i class="bi bi-palette2"></i>
+        <span>Aparência</span>
+        <i class="bi bi-chevron-down ms-auto"></i>
+      </button>
+
+      <ul class="dropdown-menu shadow-sm">
+        <li>
+          <button type="button" class="dropdown-item" data-bs-theme-value="light">
+            <i class="bi bi-sun-fill text-warning me-2"></i>Claro
           </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="bd-theme">
-            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="light"><i class="bi bi-sun-fill text-warning"></i> Claro</button></li>
-            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill text-primary"></i> Escuro</button></li>
-            <li><button type="button" class="dropdown-item d-flex align-items-center gap-2" data-bs-theme-value="auto"><i class="bi bi-circle-half text-secondary"></i> Acompanhar Sistema</button></li>
-          </ul>
         </li>
-
-        <li class="nav-item">
-          <form method="post" action="{% url 'dashboard:alternar_privacidade' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-outline-light" title="Modo privacidade — esconder valores">
-              <i class="bi {% if privacy_mode_on %}bi-eye-slash-fill{% else %}bi-eye-fill{% endif %}"></i>
-            </button>
-          </form>
+        <li>
+          <button type="button" class="dropdown-item" data-bs-theme-value="dark">
+            <i class="bi bi-moon-stars-fill text-primary me-2"></i>Escuro
+          </button>
         </li>
+        <li>
+          <button type="button" class="dropdown-item" data-bs-theme-value="auto">
+            <i class="bi bi-circle-half text-secondary me-2"></i>Acompanhar sistema
+          </button>
+        </li>
+      </ul>
+    </div>
 
-        <!-- Sininho de notificações -->
-        <li class="nav-item dropdown">
-          <a class="nav-link position-relative"
-             href="#"
-             id="notificationDropdown"
-             role="button"
-             data-bs-toggle="dropdown"
-             aria-expanded="false"
-             aria-label="Notificações">
+    <form method="post" action="{% url 'dashboard:alternar_privacidade' %}">
+      {% csrf_token %}
+      <button type="submit" class="fe-sidebar-link w-100 border-0"
+              title="Alternar privacidade dos valores">
+        <i class="bi {% if privacy_mode_on %}bi-eye-slash-fill{% else %}bi-eye-fill{% endif %}"></i>
+        <span>{% if privacy_mode_on %}Mostrar valores{% else %}Ocultar valores{% endif %}</span>
+      </button>
+    </form>
 
-            <i class="bi bi-bell-fill"></i>
+    <div class="dropdown">
+      <button class="fe-sidebar-link w-100 border-0"
+              type="button"
+              id="notificationDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false">
+        <i class="bi bi-bell-fill"></i>
+        <span>Notificações</span>
+        {% if total_notificacoes_nao_lidas %}
+          <span class="badge bg-danger ms-auto">{{ total_notificacoes_nao_lidas }}</span>
+        {% endif %}
+      </button>
 
-            {% if total_notificacoes_nao_lidas %}
-              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.6rem;">
-                {{ total_notificacoes_nao_lidas }}
-              </span>
-            {% endif %}
-          </a>
+      <div class="dropdown-menu p-3 shadow"
+           aria-labelledby="notificationDropdown"
+           style="min-width: min(320px, 85vw); max-width: 360px;">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h6 class="mb-0">Notificações</h6>
+          {% if total_notificacoes_nao_lidas %}
+            <span class="badge bg-danger">{{ total_notificacoes_nao_lidas }} não lida(s)</span>
+          {% endif %}
+        </div>
 
-          <div class="dropdown-menu dropdown-menu-end p-3 shadow"
-               aria-labelledby="notificationDropdown"
-               style="min-width:320px; max-width: min(92vw, 380px);">
+        <hr class="my-2">
 
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="mb-0">Notificações</h6>
-              {% if total_notificacoes_nao_lidas %}
-                <span class="badge bg-danger">
-                  {{ total_notificacoes_nao_lidas }} não lida(s)
-                </span>
-              {% endif %}
-            </div>
-
-            <hr class="my-2">
-
-            {% for n in notificacoes_recentes %}
-              <div class="small mb-2 pb-2 border-bottom {% if n.lida %}opacity-75{% endif %}">
-                <div class="d-flex align-items-start gap-2">
-                  <i class="bi {% if n.nivel == 'urgente' %}bi-exclamation-circle-fill text-danger{% elif n.nivel == 'alerta' %}bi-exclamation-triangle-fill text-warning{% else %}bi-info-circle-fill text-primary{% endif %} mt-1"></i>
-
-                  <div class="flex-grow-1">
-                    <div>{{ n.mensagem }}</div>
-
-                    <div class="d-flex align-items-center justify-content-between gap-2 mt-1">
-                      <span class="text-muted" style="font-size:0.72rem;">
-                        {{ n.criada_em|date:"d/m/Y H:i" }}
-                      </span>
-
-                      {% if n.lida %}
-                        <span class="badge bg-secondary">Lida</span>
-                      {% else %}
-                        <span class="badge bg-primary">Nova</span>
-                      {% endif %}
-                    </div>
-                  </div>
+        {% for n in notificacoes_recentes %}
+          <div class="small mb-2 pb-2 border-bottom {% if n.lida %}opacity-75{% endif %}">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi {% if n.nivel == 'urgente' %}bi-exclamation-circle-fill text-danger{% elif n.nivel == 'alerta' %}bi-exclamation-triangle-fill text-warning{% else %}bi-info-circle-fill text-primary{% endif %} mt-1"></i>
+              <div class="flex-grow-1">
+                <div>{{ n.mensagem }}</div>
+                <div class="d-flex align-items-center justify-content-between gap-2 mt-1">
+                  <span class="text-muted" style="font-size:0.72rem;">
+                    {{ n.criada_em|date:"d/m/Y H:i" }}
+                  </span>
+                  {% if n.lida %}
+                    <span class="badge bg-secondary">Lida</span>
+                  {% else %}
+                    <span class="badge bg-primary">Nova</span>
+                  {% endif %}
                 </div>
               </div>
-            {% empty %}
-              <div class="text-center py-3">
-                <i class="bi bi-bell-slash fs-3 text-muted"></i>
-                <p class="small text-muted mb-0 mt-2">Nenhuma notificação por aqui.</p>
-              </div>
-            {% endfor %}
-
-            {% if total_notificacoes_nao_lidas %}
-              <form method="post" action="{% url 'dashboard:marcar_notificacoes_lidas' %}" class="mt-2">
-                {% csrf_token %}
-                <button class="btn btn-sm btn-outline-primary w-100" type="submit">
-                  <i class="bi bi-check2-all me-1"></i>Marcar todas como lidas
-                </button>
-              </form>
-            {% endif %}
-
-            {% if notificacoes_recentes %}
-              <div class="text-muted text-center mt-2" style="font-size:0.72rem;">
-                Exibindo as 5 notificações mais recentes.
-              </div>
-            {% endif %}
+            </div>
           </div>
-        </li>
+        {% empty %}
+          <div class="text-center py-3">
+            <i class="bi bi-bell-slash fs-3 text-muted"></i>
+            <p class="small text-muted mb-0 mt-2">Nenhuma notificação por aqui.</p>
+          </div>
+        {% endfor %}
 
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-            <i class="bi bi-person-circle me-1"></i>{{ user.primeiro_nome }}
+        {% if total_notificacoes_nao_lidas %}
+          <form method="post" action="{% url 'dashboard:marcar_notificacoes_lidas' %}" class="mt-2">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-primary w-100" type="submit">
+              <i class="bi bi-check2-all me-1"></i>Marcar todas como lidas
+            </button>
+          </form>
+        {% endif %}
+
+        {% if notificacoes_recentes %}
+          <div class="text-muted text-center mt-2" style="font-size:0.72rem;">
+            Exibindo as 5 notificações mais recentes.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <button class="fe-sidebar-user w-100"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false">
+        <span class="fe-sidebar-avatar">
+          <i class="bi bi-person-fill"></i>
+        </span>
+        <span class="fe-sidebar-user-name">{{ user.primeiro_nome }}</span>
+        <i class="bi bi-three-dots-vertical ms-auto"></i>
+      </button>
+
+      <ul class="dropdown-menu shadow-sm w-100">
+        <li class="dropdown-header">{{ user.primeiro_nome }}</li>
+        <li>
+          <a class="dropdown-item" href="{% url 'transactions:categorias' %}">
+            <i class="bi bi-tags me-2"></i>Categorias
           </a>
-          <div class="dropdown-menu dropdown-menu-end">
-            <a class="dropdown-item" href="{% url 'transactions:categorias' %}">Categorias</a>
-            <a class="dropdown-item" href="{% url 'transactions:orcamentos' %}">Limites por categoria</a>
-            <div class="dropdown-divider"></div>
-            <a class="dropdown-item text-danger fw-semibold" href="{% url 'accounts:zerar_dados' %}">
-              <i class="bi bi-shield-slash me-2"></i>Zerar Meus Dados (Reset)
-            </a>
-            <div class="dropdown-divider"></div>
-            <form method="post" action="{% url 'accounts:logout' %}">
-              {% csrf_token %}
-              <button class="dropdown-item" type="submit">Sair</button>
-            </form>
-          </div>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{% url 'transactions:orcamentos' %}">
+            <i class="bi bi-wallet2 me-2"></i>Limites por categoria
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item text-danger fw-semibold" href="{% url 'accounts:zerar_dados' %}">
+            <i class="bi bi-shield-slash me-2"></i>Zerar meus dados
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button class="dropdown-item" type="submit">
+              <i class="bi bi-box-arrow-right me-2"></i>Sair
+            </button>
+          </form>
         </li>
       </ul>
     </div>
   </div>
-</nav>
+</aside>
 {% endif %}
 
-<main class="container py-4">
-  {% if saldo_disponivel < 0 or sobra_segura < 0 %}
-    <div class="alert alert-danger d-flex align-items-center justify-content-between mb-3 shadow-sm" role="alert">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-exclamation-octagon-fill fs-3 me-3 text-danger"></i>
-        <div>
-          <strong class="d-block">Alarme: Saldo / Projeção Negativa!</strong>
-          <span class="small">
-            {% if saldo_disponivel < 0 %}
-              Seu saldo disponível atual está negativo (<strong>{{ saldo_disponivel|brl }}</strong>).
-            {% else %}
-              Atenção: A sobra segura indica projeção negativa nos próximos dias (<strong>{{ sobra_segura|brl }}</strong>)!
-            {% endif %}
-          </span>
+<div class="{% if user.is_authenticated %}fe-app-content{% endif %}">
+  {% if user.is_authenticated %}
+  <header class="fe-topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button type="button" class="fe-menu-toggle"
+              id="feMenuToggle"
+              aria-label="Abrir menu"
+              aria-controls="feSidebar"
+              aria-expanded="false">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <div>
+        <div class="fe-topbar-title">
+          {% block page_heading %}FinanceEasy{% endblock %}
         </div>
+        <div class="fe-topbar-subtitle">Sua vida financeira em um só lugar</div>
       </div>
-      <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-danger fw-bold">Ver Extrato</a>
     </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <button type="button"
+              class="fe-topbar-icon"
+              id="bd-theme"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              aria-label="Alternar tema"
+              title="Alternar tema">
+        <i id="themeIcon" class="bi bi-circle-half"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+        <li><button type="button" class="dropdown-item" data-bs-theme-value="light"><i class="bi bi-sun-fill text-warning me-2"></i>Claro</button></li>
+        <li><button type="button" class="dropdown-item" data-bs-theme-value="dark"><i class="bi bi-moon-stars-fill text-primary me-2"></i>Escuro</button></li>
+        <li><button type="button" class="dropdown-item" data-bs-theme-value="auto"><i class="bi bi-circle-half text-secondary me-2"></i>Acompanhar sistema</button></li>
+      </ul>
+    </div>
+  </header>
   {% endif %}
 
-  {% if messages %}
-    <div class="mb-3">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show fe-auto-dismiss" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+  <main class="{% if user.is_authenticated %}fe-page-content{% else %}container py-4{% endif %}">
+    {% if user.is_authenticated and saldo_disponivel < 0 or user.is_authenticated and sobra_segura < 0 %}
+      <div class="alert alert-danger d-flex align-items-center justify-content-between mb-3 shadow-sm" role="alert">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-exclamation-octagon-fill fs-3 me-3 text-danger"></i>
+          <div>
+            <strong class="d-block">Alarme: Saldo / Projeção Negativa!</strong>
+            <span class="small">
+              {% if saldo_disponivel < 0 %}
+                Seu saldo disponível atual está negativo (<strong>{{ saldo_disponivel|brl }}</strong>).
+              {% else %}
+                Atenção: A sobra segura indica projeção negativa nos próximos dias (<strong>{{ sobra_segura|brl }}</strong>)!
+              {% endif %}
+            </span>
+          </div>
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
+        <a href="{% url 'transactions:extrato' %}" class="btn btn-sm btn-outline-danger fw-bold">Ver extrato</a>
+      </div>
+    {% endif %}
 
-  {% block content %}{% endblock %}
-</main>
+    {% if messages %}
+      <div class="mb-3">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show fe-auto-dismiss" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
 
 {% if user.is_authenticated %}
 <div class="dropdown">
@@ -220,10 +364,15 @@
   </ul>
 </div>
 
-<nav class="fe-bottom-nav">
-  <a href="{% url 'dashboard:painel' %}" class="{% if request.resolver_match.namespace == 'dashboard' %}active{% endif %}">
+<nav class="fe-bottom-nav" aria-label="Navegação rápida">
+  <a href="{% url 'dashboard:painel' %}" class="{% if request.resolver_match.url_name == 'painel' %}active{% endif %}">
     <i class="bi bi-house-door-fill"></i>Painel
   </a>
+  {% if mercado_url %}
+  <a href="{{ mercado_url }}" class="{% if request.resolver_match.url_name == 'mercado' %}active{% endif %}">
+    <i class="bi bi-graph-up-arrow"></i>Mercado
+  </a>
+  {% endif %}
   <a href="{% url 'transactions:extrato' %}" class="{% if request.resolver_match.url_name == 'extrato' %}active{% endif %}">
     <i class="bi bi-receipt"></i>Extrato
   </a>
@@ -231,10 +380,7 @@
     <i class="bi bi-credit-card-2-front"></i>Dívidas
   </a>
   <a href="{% url 'goals:lista' %}" class="{% if request.resolver_match.namespace == 'goals' %}active{% endif %}">
-    <i class="bi bi-piggy-bank"></i>Objetivos
-  </a>
-  <a href="{% url 'transactions:assinaturas' %}" class="{% if request.resolver_match.url_name == 'assinaturas' %}active{% endif %}">
-    <i class="bi bi-arrow-repeat"></i>Fixas
+    <i class="bi bi-bullseye"></i>Objetivos
   </a>
 </nav>
 {% endif %}
