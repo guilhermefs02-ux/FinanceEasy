@@ -2,12 +2,13 @@
 
 {% block title %}Mercado financeiro — FinanceEasy{% endblock %}
 
+{% block page_heading %}Mercado financeiro{% endblock %}
+
 {% block content %}
 <style>
     .mercado-page {
-        --m-purple: #8F008F;
-        --m-purple-light: #F7EAF8;
-        --m-border: #E9DFED;
+        --m-purple: var(--primary, #8F008F);
+        --m-border: var(--border, #E9DFED);
         --m-text: var(--text, #28212D);
         --m-muted: var(--muted, #766D7D);
         --m-surface: var(--surface, #FFFFFF);
@@ -15,7 +16,7 @@
         width: 100%;
         max-width: 1240px;
         margin: 0 auto;
-        padding: 24px 0 40px;
+        padding: 4px 0 32px;
         color: var(--m-text);
     }
 
@@ -23,125 +24,77 @@
         box-sizing: border-box;
     }
 
-    .mercado-hero {
-        position: relative;
-        overflow: hidden;
-        padding: 30px;
-        border-radius: 24px;
-        color: #FFFFFF;
-        background: linear-gradient(125deg, #4D075F, #85008D 55%, #B43CC0);
-        box-shadow: 0 12px 30px rgba(102, 0, 102, .18);
-        margin-bottom: 30px;
-    }
-
-    .mercado-hero::after {
-        content: "";
-        position: absolute;
-        width: 240px;
-        height: 240px;
-        border-radius: 50%;
-        right: -65px;
-        top: -115px;
-        background: rgba(255,255,255,.09);
-        pointer-events: none;
-    }
-
-    .mercado-hero-content {
-        position: relative;
-        z-index: 1;
+    .mercado-intro {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        gap: 22px;
+        justify-content: space-between;
+        gap: 16px;
         flex-wrap: wrap;
+        margin-bottom: 28px;
     }
 
-    .mercado-hero h1 {
-        margin: 0 0 10px;
-        color: #FFFFFF;
-        font-size: clamp(1.8rem, 4vw, 2.5rem);
-        line-height: 1.15;
-        font-weight: 850;
-        letter-spacing: -.8px;
-    }
-
-    .mercado-subtitle {
-        max-width: 620px;
+    .mercado-intro p {
         margin: 0;
-        color: rgba(255,255,255,.85);
-        line-height: 1.7;
-        font-size: .98rem;
+        color: var(--m-muted);
+        font-size: .92rem;
+        line-height: 1.6;
     }
 
     .mercado-back {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 9px;
-        padding: 12px 17px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.35);
-        background: rgba(255,255,255,.12);
-        color: #FFFFFF !important;
+        gap: 8px;
+        padding: 9px 14px;
+        border: 1px solid var(--m-border);
+        border-radius: 10px;
+        color: var(--m-purple) !important;
+        background: var(--m-surface);
         text-decoration: none !important;
-        font-weight: 750;
+        font-size: .88rem;
+        font-weight: 700;
         white-space: nowrap;
-        transition: background .2s ease, transform .2s ease;
+        transition: background .2s ease;
     }
 
     .mercado-back:hover {
-        background: rgba(255,255,255,.23);
-        transform: translateY(-2px);
+        background: var(--surface-hover, #F7F3F8);
     }
 
     .mercado-section {
-        margin-top: 32px;
+        margin-top: 30px;
     }
 
     .mercado-section-heading {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 17px;
+        margin-bottom: 15px;
     }
 
     .mercado-section-title {
         display: flex;
         align-items: center;
-        gap: 11px;
+        gap: 9px;
         margin: 0;
-        font-size: 1.22rem;
-        font-weight: 850;
-        letter-spacing: -.35px;
         color: var(--m-text);
+        font-size: 1.12rem;
+        font-weight: 800;
     }
 
-    .mercado-section-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        flex-shrink: 0;
-        border-radius: 13px;
+    .mercado-section-title i {
         color: var(--m-purple);
-        background: var(--m-purple-light);
-        font-size: 20px;
+        font-size: 1.1rem;
     }
 
     .mercado-section-caption {
-        margin: 4px 0 0 51px;
+        margin: 5px 0 0 27px;
         color: var(--m-muted);
-        font-size: .85rem;
+        font-size: .84rem;
         line-height: 1.5;
     }
 
     .mercado-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 17px;
+        gap: 15px;
     }
 
     @media (min-width: 900px) {
@@ -152,61 +105,54 @@
     }
 
     .mercado-card {
-        position: relative;
         min-width: 0;
-        overflow: hidden;
-        padding: 21px;
+        padding: 19px;
         border: 1px solid var(--m-border);
-        border-radius: 19px;
+        border-radius: 14px;
         background: var(--m-surface);
-        box-shadow: 0 5px 18px rgba(42, 18, 52, .045);
-        transition: transform .2s ease, box-shadow .2s ease,
-                    border-color .2s ease;
+        color: var(--m-text);
+        box-shadow: 0 2px 8px rgba(30, 20, 35, .035);
+        transition: border-color .2s ease, box-shadow .2s ease;
     }
 
     .mercado-card:hover {
-        transform: translateY(-3px);
-        border-color: #D9B4E1;
-        box-shadow: 0 12px 26px rgba(76, 24, 91, .09);
-    }
-
-    .mercado-card::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: linear-gradient(180deg, #8F008F, #D28ADD);
+        border-color: #CFA9D6;
+        box-shadow: 0 5px 15px rgba(30, 20, 35, .06);
     }
 
     .mercado-card-top {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 11px;
         min-width: 0;
-        margin-bottom: 22px;
+        margin-bottom: 20px;
     }
 
-    .mercado-flag {
+    .mercado-flag,
+    .mercado-stock-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 49px;
-        height: 49px;
+        width: 43px;
+        height: 43px;
         flex-shrink: 0;
+        overflow: hidden;
         border: 1px solid var(--m-border);
-        border-radius: 15px;
-        background: #FBF7FC;
+        border-radius: 11px;
+        background: var(--surface-hover, #F8F5F9);
     }
 
     .mercado-flag img {
         display: block;
-        width: 35px;
-        height: 25px;
+        width: 31px;
+        height: 22px;
         object-fit: cover;
-        border-radius: 4px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, .16);
+        border-radius: 3px;
+    }
+
+    .mercado-stock-icon {
+        color: var(--m-purple);
+        font-size: 1.2rem;
     }
 
     .mercado-card-heading {
@@ -214,65 +160,62 @@
     }
 
     .mercado-code {
-        margin: 0 0 4px;
+        margin: 0 0 3px;
         color: var(--m-purple);
-        font-size: .76rem;
-        font-weight: 850;
-        letter-spacing: 1.2px;
-        text-transform: uppercase;
+        font-size: .74rem;
+        font-weight: 800;
+        letter-spacing: .7px;
     }
 
     .mercado-card-title {
         margin: 0;
         color: var(--m-text);
-        font-size: .98rem;
-        line-height: 1.35;
-        font-weight: 800;
+        font-size: .91rem;
+        font-weight: 750;
+        line-height: 1.4;
         overflow-wrap: anywhere;
     }
 
-    .mercado-price-label {
-        margin-bottom: 6px;
+    .mercado-label {
+        margin-bottom: 5px;
         color: var(--m-muted);
-        font-size: .79rem;
-        font-weight: 650;
+        font-size: .8rem;
     }
 
     .mercado-value {
         color: var(--m-text);
-        font-size: clamp(1.45rem, 2.4vw, 1.85rem);
-        line-height: 1.25;
-        font-weight: 850;
-        letter-spacing: -.6px;
+        font-size: clamp(1.35rem, 2vw, 1.7rem);
+        font-weight: 800;
+        line-height: 1.3;
         overflow-wrap: anywhere;
         font-variant-numeric: tabular-nums;
     }
 
     .mercado-currency {
         color: var(--m-muted);
-        font-size: .85rem;
+        font-size: .8rem;
         font-weight: 700;
-        letter-spacing: 0;
     }
 
     .mercado-divider {
         height: 1px;
-        margin: 17px 0 13px;
+        margin: 14px 0 12px;
         background: var(--m-border);
     }
 
     .mercado-sale-row {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
         color: var(--m-muted);
-        font-size: .84rem;
+        font-size: .82rem;
     }
 
     .mercado-sale-value {
         color: var(--m-text);
-        font-weight: 800;
+        font-weight: 750;
+        text-align: right;
         font-variant-numeric: tabular-nums;
     }
 
@@ -280,11 +223,11 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        margin-top: 15px;
-        padding: 7px 10px;
-        border-radius: 9px;
-        font-size: .79rem;
-        font-weight: 850;
+        margin-top: 13px;
+        padding: 5px 8px;
+        border-radius: 7px;
+        font-size: .78rem;
+        font-weight: 800;
         font-variant-numeric: tabular-nums;
     }
 
@@ -299,77 +242,55 @@
     }
 
     .mercado-neutral {
-        color: #6D6275;
-        background: #F1EDF3;
-    }
-
-    .mercado-stock-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 49px;
-        height: 49px;
-        flex-shrink: 0;
-        border-radius: 15px;
-        color: #7D148A;
-        background: linear-gradient(145deg, #F8EAFB, #EED7F3);
-        font-size: 23px;
+        color: var(--m-muted);
+        background: var(--surface-hover, #F1EDF3);
     }
 
     .mercado-stock-points {
-        margin-top: 5px;
+        margin: 4px 0 0;
         color: var(--m-muted);
-        font-size: .79rem;
-    }
-
-    .mercado-stock-card .mercado-card-top {
-        margin-bottom: 24px;
+        font-size: .78rem;
     }
 
     .mercado-notice {
         display: flex;
         align-items: flex-start;
-        gap: 13px;
-        padding: 19px;
-        border: 1px solid #F0D6A0;
-        border-radius: 15px;
-        color: var(--m-text);
-        background: #FFFAED;
-        line-height: 1.65;
+        gap: 11px;
+        padding: 16px;
+        border: 1px solid var(--m-border);
+        border-radius: 12px;
+        background: var(--m-surface);
+        color: var(--m-muted);
+        font-size: .9rem;
+        line-height: 1.6;
     }
 
-    .mercado-notice-icon {
-        font-size: 23px;
-        flex-shrink: 0;
+    .mercado-notice i {
+        color: var(--m-purple);
+        font-size: 1.15rem;
     }
 
     .mercado-notice strong {
         display: block;
-        margin-bottom: 4px;
-        color: #81550D;
-    }
-
-    .mercado-notice p {
-        margin: 5px 0 0;
-        color: #775D32;
-        font-size: .88rem;
+        margin-bottom: 3px;
+        color: var(--m-text);
     }
 
     .mercado-updated {
         display: flex;
-        align-items: center;
         justify-content: flex-end;
-        gap: 8px;
-        margin-top: 27px;
+        align-items: center;
+        gap: 7px;
+        margin: 23px 0 0;
         color: var(--m-muted);
-        font-size: .82rem;
+        font-size: .8rem;
     }
 
     .mercado-footer {
-        margin-top: 28px;
-        padding: 15px 18px;
+        margin-top: 22px;
+        padding: 13px 15px;
         border: 1px solid var(--m-border);
-        border-radius: 13px;
+        border-radius: 11px;
         color: var(--m-muted);
         background: var(--m-surface);
         font-size: .8rem;
@@ -378,16 +299,12 @@
 
     @media (max-width: 600px) {
         .mercado-page {
-            padding-top: 12px;
+            padding-top: 0;
         }
 
-        .mercado-hero {
-            padding: 22px 19px;
-            border-radius: 19px;
-        }
-
-        .mercado-hero-content {
-            align-items: flex-start;
+        .mercado-intro {
+            align-items: stretch;
+            margin-bottom: 22px;
         }
 
         .mercado-back {
@@ -396,19 +313,19 @@
 
         .mercado-grid {
             grid-template-columns: minmax(0, 1fr);
-            gap: 13px;
+            gap: 12px;
         }
 
         .mercado-section {
-            margin-top: 27px;
+            margin-top: 25px;
         }
 
         .mercado-card {
-            padding: 19px;
+            padding: 17px;
         }
 
         .mercado-value {
-            font-size: 1.65rem;
+            font-size: 1.5rem;
         }
     }
 
@@ -422,35 +339,28 @@
 
 <div class="mercado-page">
 
-    <header class="mercado-hero">
-        <div class="mercado-hero-content">
-            <div>
-                <h1>Mercado financeiro</h1>
-                <p class="mercado-subtitle">
-                    Acompanhe cotações de moedas e bolsas de valores em um só lugar.
-                </p>
-            </div>
+    <div class="mercado-intro">
+        <p>
+            Acompanhe cotações de moedas e bolsas de valores.
+        </p>
 
-            <a class="mercado-back" href="{% url 'dashboard:painel' %}">
-                <span aria-hidden="true">←</span>
-                Voltar ao painel
-            </a>
-        </div>
-    </header>
+        <a class="mercado-back" href="{% url 'dashboard:painel' %}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            Voltar ao painel
+        </a>
+    </div>
 
     {% if hgbrasil.disponivel %}
 
         <section class="mercado-section">
             <div class="mercado-section-heading">
-                <div>
-                    <h2 class="mercado-section-title">
-                        <span class="mercado-section-icon" aria-hidden="true">💱</span>
-                        Cotações de moedas
-                    </h2>
-                    <p class="mercado-section-caption">
-                        Valores de compra, venda e variação percentual.
-                    </p>
-                </div>
+                <h2 class="mercado-section-title">
+                    <i class="bi bi-currency-exchange" aria-hidden="true"></i>
+                    Cotações de moedas
+                </h2>
+                <p class="mercado-section-caption">
+                    Valores de compra, venda e variação percentual.
+                </p>
             </div>
 
             {% if hgbrasil.moedas %}
@@ -476,7 +386,7 @@
                                              alt="Bandeira da Argentina"
                                              loading="lazy">
                                     {% else %}
-                                        <span aria-hidden="true">💱</span>
+                                        <i class="bi bi-currency-exchange" aria-hidden="true"></i>
                                     {% endif %}
                                 </div>
 
@@ -486,7 +396,7 @@
                                 </div>
                             </div>
 
-                            <div class="mercado-price-label">Compra</div>
+                            <div class="mercado-label">Compra</div>
                             <div class="mercado-value">
                                 <span class="mercado-currency">R$</span>
                                 {% if moeda.compra != None %}
@@ -526,7 +436,7 @@
                 </div>
             {% else %}
                 <div class="mercado-notice">
-                    <span class="mercado-notice-icon" aria-hidden="true">ℹ️</span>
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
                     <div>
                         <strong>Cotações de moedas indisponíveis</strong>
                         Nenhuma cotação de moeda foi retornada pela integração neste momento.
@@ -537,31 +447,31 @@
 
         <section class="mercado-section">
             <div class="mercado-section-heading">
-                <div>
-                    <h2 class="mercado-section-title">
-                        <span class="mercado-section-icon" aria-hidden="true">📊</span>
-                        Bolsas de valores
-                    </h2>
-                    <p class="mercado-section-caption">
-                        Índices e variações informados pela integração financeira.
-                    </p>
-                </div>
+                <h2 class="mercado-section-title">
+                    <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                    Bolsas de valores
+                </h2>
+                <p class="mercado-section-caption">
+                    Índices e variações informados pela integração financeira.
+                </p>
             </div>
 
             {% if hgbrasil.bolsas %}
                 <div class="mercado-grid mercado-grid-bolsas">
                     {% for bolsa in hgbrasil.bolsas %}
-                        <article class="mercado-card mercado-stock-card">
+                        <article class="mercado-card">
                             <div class="mercado-card-top">
                                 <div class="mercado-stock-icon" aria-hidden="true">
                                     {% if bolsa.codigo == "IBOVESPA" %}
-                                        🇧🇷
-                                    {% elif bolsa.codigo == "NASDAQ" or bolsa.codigo == "DOWJONES" %}
-                                        🇺🇸
+                                        <i class="bi bi-globe-americas"></i>
                                     {% elif bolsa.codigo == "IFIX" %}
-                                        🏢
+                                        <i class="bi bi-buildings"></i>
+                                    {% elif bolsa.codigo == "NASDAQ" %}
+                                        <i class="bi bi-bar-chart-line-fill"></i>
+                                    {% elif bolsa.codigo == "DOWJONES" %}
+                                        <i class="bi bi-graph-up"></i>
                                     {% else %}
-                                        📈
+                                        <i class="bi bi-graph-up-arrow"></i>
                                     {% endif %}
                                 </div>
 
@@ -598,7 +508,7 @@
                 </div>
             {% else %}
                 <div class="mercado-notice">
-                    <span class="mercado-notice-icon" aria-hidden="true">ℹ️</span>
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
                     <div>
                         <strong>Bolsas temporariamente indisponíveis</strong>
                         Não há dados de bolsas disponíveis neste momento.
@@ -609,33 +519,11 @@
 
         {% if hgbrasil.atualizado_em %}
             <p class="mercado-updated">
-                <span aria-hidden="true">🕒</span>
+                <i class="bi bi-clock-history" aria-hidden="true"></i>
                 Última atualização: {{ hgbrasil.atualizado_em }}
             </p>
         {% endif %}
 
         <div class="mercado-footer">
             <strong>Sobre os indicadores:</strong>
-            os valores são fornecidos pela integração financeira e podem ter horários
-            de atualização diferentes. As variações representam a oscilação informada
-            pela fonte e não constituem recomendação de investimento.
-        </div>
-
-    {% else %}
-        <section class="mercado-notice">
-            <span class="mercado-notice-icon" aria-hidden="true">⚠️</span>
-            <div>
-                <strong>Cotações temporariamente indisponíveis</strong>
-
-                {{ hgbrasil.motivo_indisponivel|default:"Não foi possível carregar as cotações neste momento." }}
-
-                <p>
-                    Os demais recursos do FinanceEasy continuam disponíveis.
-                    Tente novamente mais tarde.
-                </p>
-            </div>
-        </section>
-    {% endif %}
-
-</div>
-{% endblock %}
+            os valores são fornecidos
