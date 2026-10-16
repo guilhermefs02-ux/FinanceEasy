@@ -1,6 +1,7 @@
 /* ==========================================================================
    FINANCEEASY — DESIGN SYSTEM
    Minimalista, responsivo e compatível com tema claro/escuro
+   Paleta original preservada
    ========================================================================== */
 
 /* 1. TEMA CLARO */
@@ -105,8 +106,7 @@ textarea {
   color: #fff;
 }
 
-/* 4. ESTRUTURA DO MENU LATERAL
-   Aplicada quando o base.html utilizar estas classes. */
+/* 4. MENU LATERAL */
 .fe-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -114,6 +114,7 @@ textarea {
   display: flex;
   flex-direction: column;
   width: var(--fe-sidebar-width);
+  height: 100vh;
   height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -121,6 +122,8 @@ textarea {
   background: var(--fe-surface);
   border-right: 1px solid var(--fe-border);
   transition: transform 0.25s ease, background-color 0.2s ease;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fe-border) transparent;
 }
 
 .fe-sidebar-brand {
@@ -128,7 +131,7 @@ textarea {
   align-items: center;
   gap: 0.75rem;
   min-height: 48px;
-  margin: 0 0 1.75rem;
+  margin: 0 0 1.35rem;
   padding: 0 0.65rem;
   color: var(--fe-text);
   font-size: 1.2rem;
@@ -156,7 +159,10 @@ textarea {
   color: #211523;
 }
 
-.fe-sidebar-section {
+/* Compatibilidade com os dois nomes usados para os títulos do menu */
+.fe-sidebar-section,
+.fe-sidebar-section-label {
+  display: block;
   margin: 0.8rem 0 0.45rem;
   padding: 0 0.75rem;
   color: var(--fe-text-muted);
@@ -176,13 +182,17 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
   min-height: 43px;
   padding: 0.65rem 0.8rem;
   border: 1px solid transparent;
   border-radius: 10px;
+  background: transparent;
   color: var(--fe-text-muted);
   font-size: 0.88rem;
   font-weight: 550;
+  text-align: left;
+  text-decoration: none;
   transition: background-color 0.16s ease, color 0.16s ease;
 }
 
@@ -207,10 +217,77 @@ textarea {
   font-weight: 700;
 }
 
+.fe-sidebar-link:focus-visible,
+.fe-sidebar-user:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--fe-primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.fe-sidebar-bottom,
 .fe-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   margin-top: auto;
   padding-top: 1rem;
   border-top: 1px solid var(--fe-border);
+}
+
+.fe-sidebar-bottom > form {
+  margin: 0;
+}
+
+.fe-sidebar-bottom .dropdown {
+  width: 100%;
+}
+
+.fe-sidebar-bottom .dropdown-menu {
+  max-width: calc(100vw - 24px);
+}
+
+.fe-sidebar-bottom .dropdown-menu.show {
+  z-index: 1060;
+}
+
+.fe-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--fe-border);
+  border-radius: 11px;
+  background: var(--fe-surface);
+  color: var(--fe-text);
+  text-align: left;
+}
+
+.fe-sidebar-user:hover {
+  background: var(--fe-surface-hover);
+}
+
+.fe-sidebar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fe-primary) 12%, var(--fe-surface));
+  color: var(--fe-primary);
+  font-size: 1.1rem;
+}
+
+.fe-sidebar-user-name {
+  overflow: hidden;
+  flex: 1;
+  color: var(--fe-text);
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fe-sidebar-overlay {
@@ -224,6 +301,7 @@ textarea {
   transition: margin-left 0.25s ease;
 }
 
+/* 5. BARRA SUPERIOR */
 .fe-topbar {
   position: sticky;
   top: 0;
@@ -234,9 +312,57 @@ textarea {
   gap: 1rem;
   min-height: 64px;
   padding: 0.7rem 1.75rem;
-  background: color-mix(in srgb, var(--fe-surface) 94%, transparent);
+  background: var(--fe-surface);
   border-bottom: 1px solid var(--fe-border);
-  backdrop-filter: blur(12px);
+}
+
+@supports (backdrop-filter: blur(12px)) {
+  .fe-topbar {
+    background: color-mix(in srgb, var(--fe-surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+}
+
+.fe-topbar-title {
+  color: var(--fe-text);
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.fe-topbar-subtitle {
+  color: var(--fe-text-muted);
+  font-size: 0.75rem;
+}
+
+.fe-topbar-icon,
+.fe-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--fe-border);
+  border-radius: 10px;
+  background: var(--fe-surface);
+  color: var(--fe-text);
+  cursor: pointer;
+}
+
+.fe-topbar-icon:hover,
+.fe-menu-toggle:hover {
+  background: var(--fe-surface-hover);
+  color: var(--fe-primary);
+}
+
+.fe-topbar-icon {
+  font-size: 1.1rem;
+}
+
+.fe-menu-toggle {
+  display: none;
+  font-size: 1.35rem;
 }
 
 .fe-page-content {
@@ -246,19 +372,7 @@ textarea {
   padding: 1.75rem;
 }
 
-.fe-menu-toggle {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--fe-border);
-  border-radius: 10px;
-  background: var(--fe-surface);
-  color: var(--fe-text);
-}
-
-/* 5. COMPATIBILIDADE COM A NAVBAR EXISTENTE */
+/* 6. COMPATIBILIDADE COM A NAVBAR ANTIGA */
 .navbar-fe {
   background: var(--fe-surface);
   color: var(--fe-text);
@@ -294,7 +408,7 @@ textarea {
   filter: invert(1);
 }
 
-/* 6. CARDS */
+/* 7. CARDS */
 .fe-card,
 .card {
   background: var(--fe-surface);
@@ -327,7 +441,7 @@ textarea {
   box-shadow: var(--fe-shadow-hover);
 }
 
-/* 7. PAINEL DE SALDO */
+/* 8. PAINEL DE SALDO */
 .fe-hero-saldo {
   padding: 1.5rem;
   border: 1px solid color-mix(in srgb, var(--fe-primary) 18%, transparent);
@@ -358,7 +472,7 @@ textarea {
   color: var(--fe-text);
 }
 
-/* 8. ALERTAS E INDICADORES */
+/* 9. ALERTAS E INDICADORES */
 .fe-alerta-amigavel {
   padding: 0.9rem 1.1rem;
   border: 1px solid color-mix(in srgb, var(--fe-warning) 40%, transparent);
@@ -401,7 +515,7 @@ textarea {
   font-weight: 650;
 }
 
-/* 9. PROGRESSO */
+/* 10. PROGRESSO */
 .fe-progress {
   height: 9px;
   overflow: hidden;
@@ -416,7 +530,6 @@ textarea {
   transition: width 0.3s ease;
 }
 
-/* Compatibilidade com progress bars do Bootstrap */
 .progress {
   height: 9px;
   border-radius: 999px;
@@ -427,7 +540,7 @@ textarea {
   background-color: var(--fe-primary);
 }
 
-/* 10. BOTÕES */
+/* 11. BOTÕES */
 .btn {
   border-radius: var(--fe-radius-sm);
   font-weight: 600;
@@ -457,10 +570,7 @@ button:focus-visible {
   transform: translateY(-1px);
 }
 
-[data-bs-theme="dark"] .fe-btn-primary {
-  color: #211523 !important;
-}
-
+[data-bs-theme="dark"] .fe-btn-primary,
 [data-bs-theme="dark"] .fe-btn-primary:hover {
   color: #211523 !important;
 }
@@ -497,7 +607,7 @@ button:focus-visible {
   color: var(--fe-text);
 }
 
-/* 11. BOTÃO FLUTUANTE */
+/* 12. BOTÃO FLUTUANTE */
 .fe-fab {
   position: fixed;
   right: 1.5rem;
@@ -528,7 +638,7 @@ button:focus-visible {
   color: #211523;
 }
 
-/* 12. NAVEGAÇÃO INFERIOR NO CELULAR */
+/* 13. NAVEGAÇÃO INFERIOR NO CELULAR */
 .fe-bottom-nav {
   position: fixed;
   inset: auto 0 0;
@@ -566,7 +676,7 @@ button:focus-visible {
   font-size: 1.2rem;
 }
 
-/* 13. FORMULÁRIOS */
+/* 14. FORMULÁRIOS */
 .form-label,
 label {
   color: var(--fe-text);
@@ -633,7 +743,7 @@ select:focus {
   background-color: var(--fe-primary);
 }
 
-/* 14. TABELAS */
+/* 15. TABELAS */
 .table {
   --bs-table-color: var(--fe-text);
   --bs-table-bg: transparent;
@@ -663,7 +773,7 @@ select:focus {
   border-radius: var(--fe-radius-sm);
 }
 
-/* 15. DROPDOWNS */
+/* 16. DROPDOWNS */
 .dropdown-menu {
   padding: 0.45rem;
   border: 1px solid var(--fe-border);
@@ -694,7 +804,7 @@ select:focus {
   color: var(--fe-text-muted);
 }
 
-/* 16. ALERTAS BOOTSTRAP */
+/* 17. ALERTAS BOOTSTRAP */
 .alert {
   border-radius: var(--fe-radius-sm);
   border-width: 1px;
@@ -724,7 +834,7 @@ select:focus {
   color: var(--fe-text);
 }
 
-/* 17. ESTADOS VAZIOS, VALORES RÁPIDOS E PRIVACIDADE */
+/* 18. ESTADOS VAZIOS, VALORES RÁPIDOS E PRIVACIDADE */
 .fe-privado {
   filter: blur(7px);
   user-select: none;
@@ -752,7 +862,7 @@ select:focus {
   color: var(--fe-primary);
 }
 
-/* 18. TEXTOS E ELEMENTOS AUXILIARES */
+/* 19. TEXTOS E ELEMENTOS AUXILIARES */
 .text-muted,
 .text-body-secondary {
   color: var(--fe-text-muted) !important;
@@ -797,7 +907,12 @@ select:focus {
   filter: invert(1) grayscale(100%) brightness(200%);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--fe-text);
   letter-spacing: -0.025em;
 }
@@ -807,7 +922,7 @@ hr {
   opacity: 1;
 }
 
-/* 19. RESPONSIVIDADE */
+/* 20. RESPONSIVIDADE */
 @media (min-width: 992px) {
   body {
     padding-bottom: 0;
@@ -819,6 +934,10 @@ hr {
 
   .fe-app-content {
     margin-left: var(--fe-sidebar-width);
+  }
+
+  .fe-sidebar-overlay {
+    display: none !important;
   }
 }
 
@@ -869,6 +988,10 @@ hr {
   .fe-hero-saldo {
     padding: 1.2rem;
   }
+
+  .fe-sidebar-bottom {
+    margin-top: 1.5rem;
+  }
 }
 
 @media (max-width: 575.98px) {
@@ -899,9 +1022,17 @@ hr {
   .fe-bottom-nav a {
     font-size: 0.61rem;
   }
+
+  .fe-topbar-subtitle {
+    font-size: 0.69rem;
+  }
+
+  .fe-topbar {
+    gap: 0.5rem;
+  }
 }
 
-/* 20. ACESSIBILIDADE E MOVIMENTO REDUZIDO */
+/* 21. ACESSIBILIDADE E MOVIMENTO REDUZIDO */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
