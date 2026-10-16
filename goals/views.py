@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 def obter_objetivos_ativos(usuario):
     """Atualiza os status e retorna os objetivos ainda ativos."""
+
     atualizar_objetivos_e_arquivar(usuario)
 
     return Goal.objects.filter(
@@ -31,10 +32,11 @@ def obter_objetivos_ativos(usuario):
 @login_required
 def lista_objetivos(request):
     """Exibe a reserva de emergência e os demais objetivos ativos."""
+
     objetivos_ativos = obter_objetivos_ativos(request.user)
 
     colchao = objetivos_ativos.filter(
-        is_colchao_padrao=True,
+        is_colchao_padrao=True
     ).first()
 
     if colchao is None:
@@ -46,7 +48,7 @@ def lista_objetivos(request):
         )
 
     outros_objetivos = objetivos_ativos.filter(
-        is_colchao_padrao=False,
+        is_colchao_padrao=False
     ).order_by("-criado_em")
 
     form = GoalForm()
@@ -93,7 +95,23 @@ def lista_objetivos(request):
 @require_POST
 def guardar_troco(request, pk):
     """Registra uma contribuição em um objetivo ativo."""
+
     atualizar_objetivos_e_arquivar(request.user)
+
+    objetivo = get_object_or_404(
+        Goal,
+        pk=pk,
+        usuario=request.user,
+        arquivado_em__isnull=True,
+    )
+
+    if objetivo.concluido_em:
+        messages.warning(
+            request,
+            "Este objetivo já foi concluído. Não é possível guardar "
+            "mais dinheiro enquanto ele aguarda o arquivamento.",
+        )
+        return redirect("goals:lista")
 
     valor_atalho = request.POST.get("valor_atalho")
     valor = None
@@ -124,22 +142,6 @@ def guardar_troco(request, pk):
 
     try:
         with transaction.atomic():
-            objetivo = get_object_or_404(
-                Goal.objects.select_for_update(),
-                pk=pk,
-                usuario=request.user,
-                arquivado_em__isnull=True,
-            )
-
-            if objetivo.concluido_em:
-                messages.warning(
-                    request,
-                    "Este objetivo já foi concluído. Não é possível "
-                    "guardar mais dinheiro enquanto ele aguarda "
-                    "o arquivamento.",
-                )
-                return redirect("goals:lista")
-
             GoalContribution.objects.create(
                 objetivo=objetivo,
                 valor=valor,
@@ -149,21 +151,18 @@ def guardar_troco(request, pk):
             objetivo.atualizar_status_conclusao()
             objetivo.refresh_from_db()
 
-            nome_objetivo = objetivo.nome
-            concluido = bool(objetivo.concluido_em)
-
-        if concluido:
+        if objetivo.concluido_em:
             messages.success(
                 request,
-                f'Parabéns! Você concluiu o objetivo "{nome_objetivo}". '
-                "Ele ficará disponível por mais 10 dias antes de ser "
-                "arquivado automaticamente.",
+                f'Parabéns! Você concluiu o objetivo "{objetivo.nome}". '
+                "Ele ficará disponível por mais 10 minutos antes de ser "
+                "arquivado.",
             )
         else:
             messages.success(
                 request,
                 f"Você guardou R$ {valor:.2f} no objetivo "
-                f'"{nome_objetivo}".',
+                f'"{objetivo.nome}".',
             )
 
     except Exception:
@@ -183,25 +182,8 @@ def guardar_troco(request, pk):
 @require_POST
 def retirar_saldo(request, pk):
     """Registra uma retirada sem apagar o histórico de contribuições."""
+
     atualizar_objetivos_e_arquivar(request.user)
-
-    valor_texto = request.POST.get("valor", "").strip()
-
-    try:
-        valor = Decimal(valor_texto.replace(",", "."))
-    except (InvalidOperation, AttributeError):
-        messages.error(
-            request,
-            "Informe um valor válido para retirar.",
-        )
-        return redirect("goals:lista")
-
-    if not valor.is_finite() or valor <= 0:
-        messages.error(
-            request,
-            "O valor da retirada precisa ser maior que zero.",
-        )
-        return redirect("goals:lista")
 
     with transaction.atomic():
         objetivo = get_object_or_404(
@@ -216,6 +198,24 @@ def retirar_saldo(request, pk):
                 request,
                 "Este objetivo está concluído e não permite retiradas "
                 "durante o período de espera para arquivamento.",
+            )
+            return redirect("goals:lista")
+
+        valor_texto = request.POST.get("valor", "").strip()
+
+        try:
+            valor = Decimal(valor_texto.replace(",", "."))
+        except (InvalidOperation, AttributeError):
+            messages.error(
+                request,
+                "Informe um valor válido para retirar.",
+            )
+            return redirect("goals:lista")
+
+        if not valor.is_finite() or valor <= 0:
+            messages.error(
+                request,
+                "O valor da retirada precisa ser maior que zero.",
             )
             return redirect("goals:lista")
 
@@ -239,12 +239,10 @@ def retirar_saldo(request, pk):
         objetivo.atualizar_status_conclusao()
         objetivo.refresh_from_db()
 
-        nome_objetivo = objetivo.nome
-
     messages.success(
         request,
         f"Retirada de R$ {valor:.2f} registrada no objetivo "
-        f'"{nome_objetivo}".',
+        f'"{objetivo.nome}".',
     )
 
     return redirect("goals:lista")
@@ -254,6 +252,7 @@ def retirar_saldo(request, pk):
 @require_POST
 def resetar_colchao(request):
     """Zera o saldo do colchão registrando uma retirada no histórico."""
+
     try:
         with transaction.atomic():
             colchao = get_object_or_404(
@@ -268,8 +267,8 @@ def resetar_colchao(request):
             if saldo_atual < Decimal("0.00"):
                 messages.error(
                     request,
-                    "O saldo do colchão está negativo. Confira as "
-                    "movimentações antes de resetar a meta.",
+                    "O saldo do colchão está negativo. Confira as movimentações "
+                    "antes de resetar a meta.",
                 )
                 return redirect("goals:lista")
 
@@ -310,6 +309,7 @@ def resetar_colchao(request):
 @login_required
 def editar_colchao(request):
     """Permite alterar o valor-alvo da reserva de emergência."""
+
     objetivos_ativos = obter_objetivos_ativos(request.user)
 
     colchao = get_object_or_404(
@@ -341,7 +341,6 @@ def editar_colchao(request):
             "form": form,
             "objetivo": colchao,
             "titulo": "Editar colchão para imprevistos",
-            "editar_colchao": True,
         },
     )
 
@@ -349,6 +348,7 @@ def editar_colchao(request):
 @login_required
 def editar_objetivo(request, pk):
     """Permite editar um objetivo secundário ativo."""
+
     atualizar_objetivos_e_arquivar(request.user)
 
     objetivo = get_object_or_404(
@@ -382,7 +382,6 @@ def editar_objetivo(request, pk):
             "form": form,
             "objetivo": objetivo,
             "titulo": "Editar objetivo",
-            "editar_colchao": False,
         },
     )
 
@@ -391,6 +390,7 @@ def editar_objetivo(request, pk):
 @require_POST
 def excluir_objetivo(request, pk):
     """Exclui um objetivo secundário ativo."""
+
     objetivo = get_object_or_404(
         Goal,
         pk=pk,
@@ -412,22 +412,37 @@ def excluir_objetivo(request, pk):
 
 @login_required
 def historico_objetivos(request):
-    """Exibe os objetivos arquivados do usuário."""
-    try:
-        objetivos = Goal.objects.filter(
-            usuario=request.user,
-            arquivado_em__isnull=False,
-        ).order_by("-arquivado_em")
+    """Diagnóstico temporário da página de histórico."""
 
-        return render(
+    logger.info("DIAGNÓSTICO HISTÓRICO: função iniciada")
+
+    try:
+        objetivos = list(
+            Goal.objects.filter(
+                usuario=request.user,
+                arquivado_em__isnull=False,
+            ).order_by("-arquivado_em")
+        )
+
+        logger.info(
+            "DIAGNÓSTICO HISTÓRICO: consulta OK; quantidade=%s",
+            len(objetivos),
+        )
+
+        resposta = render(
             request,
             "goals/historico.html",
             {"objetivos": objetivos},
         )
 
+        logger.info(
+            "DIAGNÓSTICO HISTÓRICO: template renderizado OK"
+        )
+        return resposta
+
     except Exception:
         logger.exception(
-            "Erro ao carregar o histórico de objetivos do usuário %s",
+            "DIAGNÓSTICO HISTÓRICO: erro para usuário %s",
             request.user.pk,
         )
         raise
