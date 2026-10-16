@@ -11,7 +11,6 @@ from django.db import transaction as db_transaction
 from django.db.models import Sum
 from django.db.models.functions import TruncYear
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 
 from core.services.budget_alerts import verificar_limite_categoria
@@ -44,129 +43,6 @@ from .services.import_parser import (
 )
 from .services.recurrency import gerar_parcelas_futuras
 from .services.recurring_bills import gerar_vencimentos_contas_fixas
-
-
-def _data_efetiva_pagamento(pagamento):
-    """Obtém a data real do pagamento ou usa o vencimento como alternativa."""
-    if pagamento.pago_em:
-        if timezone.is_aware(pagamento.pago_em):
-            return timezone.localtime(pagamento.pago_em).date()
-        return pagamento.pago_em.date()
-
-    return pagamento.data_vencimento
-
-
-def _regularizar_pagamentos_contas_fixas(usuario):
-    """
-    Regulariza pagamentos antigos sem gerar despesas duplicadas.
-
-    Atualiza transações que já estejam vinculadas ao pagamento.
-    Quando não houver vínculo, procura um lançamento com os mesmos
-    dados específicos da despesa de conta fixa antes de criar outro.
-    """
-    regularizadas = 0
-
-    pagamentos_ids = list(
-        RecurringBillPayment.objects.filter(
-            conta__usuario=usuario,
-            status=RecurringBillPayment.Status.PAGO,
-        ).values_list("pk", flat=True)
-    )
-
-    for pagamento_id in pagamentos_ids:
-        with db_transaction.atomic():
-            pagamento = (
-                RecurringBillPayment.objects.select_for_update()
-                .select_related("conta", "conta__categoria")
-                .filter(
-                    pk=pagamento_id,
-                    conta__usuario=usuario,
-                    status=RecurringBillPayment.Status.PAGO,
-                )
-                .first()
-            )
-
-            if pagamento is None:
-                continue
-
-            conta = pagamento.conta
-            data_pagamento = _data_efetiva_pagamento(pagamento)
-            descricao = f"Pagamento: {conta.nome_servico}"
-
-            transacao = None
-
-            if pagamento.transacao_id:
-                transacao = Transaction.objects.filter(
-                    pk=pagamento.transacao_id,
-                    usuario=usuario,
-                ).first()
-
-            if transacao is None:
-                transacao = (
-                    Transaction.objects.filter(
-                        usuario=usuario,
-                        tipo=Transaction.Tipo.DESPESA,
-                        valor=pagamento.valor,
-                        data=data_pagamento,
-                        categoria=conta.categoria,
-                        descricao=descricao,
-                        origem=Transaction.Origem.MANUAL,
-                        status=Transaction.Status.CONFIRMADA,
-                        tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
-                        pagamentos_contas_fixas__isnull=True,
-                    )
-                    .order_by("criado_em")
-                    .first()
-                )
-
-            if transacao is None:
-                transacao = Transaction.objects.create(
-                    usuario=usuario,
-                    tipo=Transaction.Tipo.DESPESA,
-                    valor=pagamento.valor,
-                    data=data_pagamento,
-                    categoria=conta.categoria,
-                    descricao=descricao,
-                    origem=Transaction.Origem.MANUAL,
-                    status=Transaction.Status.CONFIRMADA,
-                    tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
-                )
-                regularizadas += 1
-            else:
-                campos = {
-                    "tipo": Transaction.Tipo.DESPESA,
-                    "valor": pagamento.valor,
-                    "data": data_pagamento,
-                    "categoria": conta.categoria,
-                    "descricao": descricao,
-                    "origem": Transaction.Origem.MANUAL,
-                    "status": Transaction.Status.CONFIRMADA,
-                    "tipo_recorrencia": Transaction.TipoRecorrencia.FIXA,
-                }
-
-                alterada = False
-
-                for campo, valor in campos.items():
-                    valor_atual = (
-                        getattr(transacao, f"{campo}_id")
-                        if campo == "categoria"
-                        else getattr(transacao, campo)
-                    )
-
-                    valor_novo = valor.pk if campo == "categoria" else valor
-
-                    if valor_atual != valor_novo:
-                        setattr(transacao, campo, valor)
-                        alterada = True
-
-                if alterada:
-                    transacao.save()
-
-            if pagamento.transacao_id != transacao.pk:
-                pagamento.transacao = transacao
-                pagamento.save(update_fields=["transacao"])
-
-    return regularizadas
 
 
 @login_required
@@ -985,6 +861,7 @@ def editar_transacao(request, pk):
 
 @login_required
 def excluir_transacao(request, pk):
+    """Exclui o lançamento e devolve a conta fixa para pendente, se aplicável."""
     transacao = get_object_or_404(
         Transaction,
         pk=pk,
@@ -992,8 +869,25 @@ def excluir_transacao(request, pk):
     )
 
     if request.method == "POST":
-        transacao.delete()
-        messages.success(request, "Lançamento excluído.")
+        with db_transaction.atomic():
+            pagamentos = RecurringBillPayment.objects.filter(
+                transacao=transacao,
+                conta__usuario=request.user,
+            )
+
+            pagamentos.update(
+                transacao=None,
+                status=RecurringBillPayment.Status.PENDENTE,
+                pago_em=None,
+            )
+
+            transacao.delete()
+
+        messages.success(
+            request,
+            "Lançamento excluído. Se era uma conta fixa, "
+            "o vencimento voltou para pendente.",
+        )
 
     return redirect("transactions:extrato")
 
@@ -1001,15 +895,8 @@ def excluir_transacao(request, pk):
 @login_required
 def assinaturas(request):
     """UC07 — Gerenciar contas fixas e assinaturas recorrentes."""
-    regularizadas = _regularizar_pagamentos_contas_fixas(request.user)
+    # Gera vencimentos futuros sem reconstruir transações que foram excluídas.
     gerar_vencimentos_contas_fixas(request.user)
-
-    if regularizadas:
-        messages.success(
-            request,
-            f"{regularizadas} despesa(s) de conta(s) fixa(s) "
-            "antiga(s) foram recuperadas e vinculadas ao extrato.",
-        )
 
     if request.method == "POST":
         form = RecurringBillForm(
