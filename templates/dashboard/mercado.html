@@ -21,6 +21,7 @@
         color: var(--m-text);
     }
 
+    /* Tema claro: cores padrão da página */
     .mercado-page * {
         box-sizing: border-box;
     }
@@ -234,13 +235,13 @@
     }
 
     .mercado-positive {
-        color: var(--success, #137843);
-        background: var(--success-bg, #E6F7EC);
+        color: #137843;
+        background: #E6F7EC;
     }
 
     .mercado-negative {
-        color: var(--danger, #B42335);
-        background: var(--danger-bg, #FDEBED);
+        color: #B42335;
+        background: #FDEBED;
     }
 
     .mercado-neutral {
@@ -298,6 +299,103 @@
         background: var(--m-surface);
         font-size: .8rem;
         line-height: 1.6;
+    }
+
+    /*
+     * Tema escuro:
+     * O seletor usa os atributos definidos pelo base.html.
+     * As cores são aplicadas diretamente nesta página.
+     */
+    html[data-theme="dark"] .mercado-page,
+    html[data-bs-theme="dark"] .mercado-page {
+        --m-purple: #DCA0F0;
+        --m-border: #45404F;
+        --m-text: #F3EFF7;
+        --m-muted: #C1B9CC;
+        --m-surface: #211E28;
+        --m-surface-hover: #302B39;
+    }
+
+    html[data-theme="dark"] .mercado-card,
+    html[data-bs-theme="dark"] .mercado-card {
+        background-color: #211E28;
+        color: #F3EFF7;
+        border-color: #45404F;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+    }
+
+    html[data-theme="dark"] .mercado-card:hover,
+    html[data-bs-theme="dark"] .mercado-card:hover {
+        border-color: #DCA0F0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, .25);
+    }
+
+    html[data-theme="dark"] .mercado-card-title,
+    html[data-theme="dark"] .mercado-value,
+    html[data-theme="dark"] .mercado-sale-value,
+    html[data-theme="dark"] .mercado-notice strong,
+    html[data-theme="dark"] .mercado-section-title,
+    html[data-theme="dark"] .mercado-footer strong,
+    html[data-bs-theme="dark"] .mercado-card-title,
+    html[data-bs-theme="dark"] .mercado-value,
+    html[data-bs-theme="dark"] .mercado-sale-value,
+    html[data-bs-theme="dark"] .mercado-notice strong,
+    html[data-bs-theme="dark"] .mercado-section-title,
+    html[data-bs-theme="dark"] .mercado-footer strong {
+        color: #F3EFF7;
+    }
+
+    html[data-theme="dark"] .mercado-flag,
+    html[data-theme="dark"] .mercado-stock-icon,
+    html[data-bs-theme="dark"] .mercado-flag,
+    html[data-bs-theme="dark"] .mercado-stock-icon {
+        background-color: #302B39;
+        border-color: #45404F;
+    }
+
+    html[data-theme="dark"] .mercado-positive,
+    html[data-bs-theme="dark"] .mercado-positive {
+        color: #9DE8B7;
+        background: #173B2A;
+        border-color: #28583D;
+    }
+
+    html[data-theme="dark"] .mercado-negative,
+    html[data-bs-theme="dark"] .mercado-negative {
+        color: #FFADB5;
+        background: #48252D;
+        border-color: #713540;
+    }
+
+    html[data-theme="dark"] .mercado-neutral,
+    html[data-bs-theme="dark"] .mercado-neutral {
+        color: #E2DBEB;
+        background: #302B39;
+        border-color: #45404F;
+    }
+
+    html[data-theme="dark"] .mercado-back,
+    html[data-bs-theme="dark"] .mercado-back {
+        color: #DCA0F0 !important;
+        background-color: #211E28;
+        border-color: #45404F;
+    }
+
+    html[data-theme="dark"] .mercado-back:hover,
+    html[data-bs-theme="dark"] .mercado-back:hover {
+        background-color: #302B39;
+    }
+
+    html[data-theme="dark"] .mercado-notice,
+    html[data-bs-theme="dark"] .mercado-notice {
+        background-color: #211E28;
+        border-color: #45404F;
+        color: #C1B9CC;
+    }
+
+    html[data-theme="dark"] .mercado-divider,
+    html[data-bs-theme="dark"] .mercado-divider {
+        background-color: #45404F;
     }
 
     @media (max-width: 600px) {
