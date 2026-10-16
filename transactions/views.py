@@ -43,6 +43,7 @@ from .services.import_parser import (
     parse_extrato,
 )
 from .services.recurrency import gerar_parcelas_futuras
+from .services.recurring_bills import gerar_vencimentos_contas_fixas
 
 
 def _data_efetiva_pagamento(pagamento):
@@ -915,6 +916,9 @@ def assinaturas(request):
     """UC07 — Gerenciar contas fixas e assinaturas recorrentes."""
     # Recupera os pagamentos antigos antes de exibir as assinaturas.
     regularizadas = _regularizar_pagamentos_contas_fixas(request.user)
+
+    # Gera os vencimentos futuros sem duplicar os que já existem.
+    gerar_vencimentos_contas_fixas(request.user)
 
     if regularizadas:
         messages.success(
