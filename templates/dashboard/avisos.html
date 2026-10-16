@@ -143,6 +143,7 @@
     opacity: .78;
   }
 
+  /* Estilo padrão dos botões */
   .aviso-botao {
     display: inline-block;
     text-decoration: none;
@@ -152,6 +153,31 @@
     font-size: .9rem;
     font-weight: 650;
     color: inherit;
+    cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease,
+                color .2s ease, transform .2s ease;
+  }
+
+  /* Botão verde para marcar como paga */
+  form .aviso-botao {
+    background-color: #198754;
+    border-color: #198754;
+    color: #fff;
+  }
+
+  form .aviso-botao:hover {
+    background-color: #146c43;
+    border-color: #13653f;
+    color: #fff;
+  }
+
+  form .aviso-botao:focus-visible {
+    outline: 3px solid rgba(25, 135, 84, .35);
+    outline-offset: 2px;
+  }
+
+  form .aviso-botao:active {
+    transform: scale(.98);
   }
 
   @media (max-width: 640px) {
@@ -178,6 +204,7 @@
         Acompanhe contas fixas e parcelas de dívidas vencidas ou próximas do vencimento.
       </p>
     </div>
+
     <a href="{% url 'dashboard:painel' %}" class="aviso-botao">
       Voltar ao painel
     </a>
@@ -212,6 +239,7 @@
           <div class="aviso-item-info">
             <span class="aviso-status atrasado">Vencido</span>
             <h3>{{ aviso.nome }}</h3>
+
             <p>
               {% if aviso.tipo == "conta" %}
                 Conta fixa
@@ -220,6 +248,7 @@
               {% endif %}
               · Vencimento: {{ aviso.vencimento|date:"d/m/Y" }}
             </p>
+
             {% if aviso.tipo == "divida" %}
               <p>Parcela pendente de pagamento.</p>
             {% endif %}
@@ -263,6 +292,7 @@
           <div class="aviso-item-info">
             <span class="aviso-status pendente">Pendente</span>
             <h3>{{ aviso.nome }}</h3>
+
             <p>
               {% if aviso.tipo == "conta" %}
                 Conta fixa
