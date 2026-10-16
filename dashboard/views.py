@@ -89,8 +89,6 @@ def _vencimento_referencia_divida(divida, hoje):
         divida.dia_vencimento,
     )
 
-    # Evita considerar como atrasada uma dívida cadastrada depois
-    # do vencimento deste mês, caso nenhuma parcela tenha sido paga.
     criada_em = timezone.localtime(divida.criado_em).date()
 
     if (
@@ -101,8 +99,6 @@ def _vencimento_referencia_divida(divida, hoje):
     ):
         return None
 
-    # Se houve pagamento registrado neste mês, não exibe novamente
-    # a parcela da competência atual como pendente.
     pagamento_no_mes = divida.pagamentos.filter(
         data_pagamento__year=hoje.year,
         data_pagamento__month=hoje.month,
@@ -117,9 +113,6 @@ def _vencimento_referencia_divida(divida, hoje):
 def _central_de_avisos(user, dias_janela=7):
     """
     Centraliza os avisos de contas recorrentes e dívidas em aberto.
-
-    As contas recorrentes respeitam o pagamento de cada ocorrência.
-    As dívidas quitadas ou sem parcelas restantes são ignoradas.
     """
     hoje = timezone.localdate()
     limite = hoje + timedelta(days=dias_janela)
@@ -142,7 +135,6 @@ def _central_de_avisos(user, dias_janela=7):
             },
         )
 
-        # Não exibe ocorrências já pagas.
         if pagamento.status == "pago":
             continue
 
@@ -206,6 +198,20 @@ def _central_de_avisos(user, dias_janela=7):
     }
 
 
+def _contexto_avisos(user):
+    """Monta os dados compartilhados pela Central de Avisos e pelo painel."""
+    central_avisos = _central_de_avisos(user, dias_janela=7)
+
+    return {
+        "central_avisos": central_avisos,
+        "avisos_vencidos": central_avisos["vencidos"],
+        "avisos_a_vencer": central_avisos["a_vencer"],
+        "total_vencidos": central_avisos["total_vencidos"],
+        "total_a_vencer": central_avisos["total_a_vencer"],
+        "total_avisos": central_avisos["total_avisos"],
+    }
+
+
 def _inteiro_get_valido(valor, padrao, minimo, maximo):
     """Converte um parâmetro GET em inteiro dentro dos limites permitidos."""
     try:
@@ -223,7 +229,6 @@ def _inteiro_get_valido(valor, padrao, minimo, maximo):
 def painel(request):
     hoje = timezone.localdate()
 
-    # Competência selecionada no painel.
     mes_selecionado = _inteiro_get_valido(
         request.GET.get("mes"),
         hoje.month,
@@ -266,7 +271,6 @@ def painel(request):
         or Decimal("0")
     )
 
-    # Mantém o saldo disponível como o acumulado histórico confirmado.
     receitas_confirmadas = (
         Transaction.objects.filter(
             usuario=request.user,
@@ -287,18 +291,12 @@ def painel(request):
 
     saldo_disponivel = receitas_confirmadas - despesas_confirmadas
 
-    # Central de avisos: continua baseada na data atual.
-    central_avisos = _central_de_avisos(
-        request.user,
-        dias_janela=7,
-    )
+    # Mantém os avisos no cálculo da sobra segura e nos indicadores do painel.
+    dados_avisos = _contexto_avisos(request.user)
+    avisos_a_vencer = dados_avisos["avisos_a_vencer"]
 
-    # Considera os valores dos avisos futuros no cálculo da sobra segura.
     total_a_vencer_7_dias = sum(
-        (
-            item["valor"]
-            for item in central_avisos["a_vencer"]
-        ),
+        (item["valor"] for item in avisos_a_vencer),
         start=Decimal("0"),
     )
 
@@ -368,7 +366,6 @@ def painel(request):
         tipo=Transaction.Tipo.DESPESA,
     ).order_by("-data")
 
-    # Lista de anos para os controles de navegação do painel.
     primeiro_ano_transacao = (
         Transaction.objects.filter(
             usuario=request.user,
@@ -396,12 +393,7 @@ def painel(request):
         "total_despesas": total_despesas,
         "saldo_disponivel": saldo_disponivel,
         "sobra_segura": sobra_segura,
-        "central_avisos": central_avisos,
-        "avisos_vencidos": central_avisos["vencidos"],
-        "avisos_a_vencer": central_avisos["a_vencer"],
-        "total_vencidos": central_avisos["total_vencidos"],
-        "total_a_vencer": central_avisos["total_a_vencer"],
-        "total_avisos": central_avisos["total_avisos"],
+        **dados_avisos,
         "top_categorias": top_categorias,
         "maior_categoria_total": maior_categoria_total,
         "colchao": colchao,
@@ -419,6 +411,22 @@ def painel(request):
     return render(
         request,
         "dashboard/painel.html",
+        contexto,
+    )
+
+
+@login_required
+def avisos(request):
+    """Exibe a Central de Avisos em uma página independente."""
+    contexto = _contexto_avisos(request.user)
+    contexto["privacy_mode_on"] = request.session.get(
+        "privacy_mode_on",
+        False,
+    )
+
+    return render(
+        request,
+        "dashboard/avisos.html",
         contexto,
     )
 
@@ -452,7 +460,7 @@ def marcar_conta_paga(request, pagamento_id):
         pagamento.pago_em = timezone.now()
         pagamento.save(update_fields=["status", "pago_em"])
 
-    return redirect("dashboard:painel")
+    return redirect("dashboard:avisos")
 
 
 @login_required
@@ -462,10 +470,7 @@ def alternar_privacidade(request):
         atual = request.session.get("privacy_mode_on", False)
         request.session["privacy_mode_on"] = not atual
 
-    proximo = (
-        request.META.get("HTTP_REFERER")
-        or "dashboard:painel"
-    )
+    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
 
     return redirect(proximo)
 
@@ -475,9 +480,6 @@ def marcar_notificacoes_lidas(request):
     if request.method == "POST":
         request.user.notificacoes.filter(lida=False).update(lida=True)
 
-    proximo = (
-        request.META.get("HTTP_REFERER")
-        or "dashboard:painel"
-    )
+    proximo = request.META.get("HTTP_REFERER") or "dashboard:painel"
 
     return redirect(proximo)
