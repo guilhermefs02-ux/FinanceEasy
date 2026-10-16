@@ -12,6 +12,7 @@
         --m-text: var(--text, #28212D);
         --m-muted: var(--muted, #766D7D);
         --m-surface: var(--surface, #FFFFFF);
+        --m-surface-hover: var(--surface-hover, #F7F3F8);
 
         width: 100%;
         max-width: 1240px;
@@ -58,7 +59,7 @@
     }
 
     .mercado-back:hover {
-        background: var(--surface-hover, #F7F3F8);
+        background: var(--m-surface-hover);
     }
 
     .mercado-section {
@@ -111,13 +112,13 @@
         border-radius: 14px;
         background: var(--m-surface);
         color: var(--m-text);
-        box-shadow: 0 2px 8px rgba(30, 20, 35, .035);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
         transition: border-color .2s ease, box-shadow .2s ease;
     }
 
     .mercado-card:hover {
-        border-color: #CFA9D6;
-        box-shadow: 0 5px 15px rgba(30, 20, 35, .06);
+        border-color: var(--m-purple);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, .08);
     }
 
     .mercado-card-top {
@@ -139,7 +140,7 @@
         overflow: hidden;
         border: 1px solid var(--m-border);
         border-radius: 11px;
-        background: var(--surface-hover, #F8F5F9);
+        background: var(--m-surface-hover);
     }
 
     .mercado-flag img {
@@ -225,6 +226,7 @@
         gap: 5px;
         margin-top: 13px;
         padding: 5px 8px;
+        border: 1px solid transparent;
         border-radius: 7px;
         font-size: .78rem;
         font-weight: 800;
@@ -232,18 +234,19 @@
     }
 
     .mercado-positive {
-        color: #137843;
-        background: #E6F7EC;
+        color: var(--success, #137843);
+        background: var(--success-bg, #E6F7EC);
     }
 
     .mercado-negative {
-        color: #B42335;
-        background: #FDEBED;
+        color: var(--danger, #B42335);
+        background: var(--danger-bg, #FDEBED);
     }
 
     .mercado-neutral {
-        color: var(--m-muted);
-        background: var(--surface-hover, #F1EDF3);
+        color: var(--m-text);
+        background: var(--m-surface-hover);
+        border-color: var(--m-border);
     }
 
     .mercado-stock-points {
@@ -400,7 +403,11 @@
                             <div class="mercado-value">
                                 <span class="mercado-currency">R$</span>
                                 {% if moeda.compra != None %}
-                                    {{ moeda.compra|floatformat:2 }}
+                                    {% if moeda.codigo == "ARS" %}
+                                        {{ moeda.compra|floatformat:4 }}
+                                    {% else %}
+                                        {{ moeda.compra|floatformat:2 }}
+                                    {% endif %}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -412,7 +419,11 @@
                                 <span>Venda</span>
                                 <span class="mercado-sale-value">
                                     {% if moeda.venda != None %}
-                                        R$ {{ moeda.venda|floatformat:2 }}
+                                        {% if moeda.codigo == "ARS" %}
+                                            R$ {{ moeda.venda|floatformat:4 }}
+                                        {% else %}
+                                            R$ {{ moeda.venda|floatformat:2 }}
+                                        {% endif %}
                                     {% else %}
                                         —
                                     {% endif %}
