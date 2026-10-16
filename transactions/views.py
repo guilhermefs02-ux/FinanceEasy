@@ -95,15 +95,12 @@ def _regularizar_pagamentos_contas_fixas(usuario):
 
             transacao = None
 
-            # Primeiro, utiliza somente o vínculo explícito do pagamento.
             if pagamento.transacao_id:
                 transacao = Transaction.objects.filter(
                     pk=pagamento.transacao_id,
                     usuario=usuario,
                 ).first()
 
-            # Sem vínculo válido, procura um lançamento com os dados
-            # específicos da conta fixa, ainda sem pagamento associado.
             if transacao is None:
                 transacao = (
                     Transaction.objects.filter(
@@ -136,8 +133,6 @@ def _regularizar_pagamentos_contas_fixas(usuario):
                 )
                 regularizadas += 1
             else:
-                # Atualiza somente se os dados da despesa vinculada
-                # precisarem de correção.
                 campos = {
                     "tipo": Transaction.Tipo.DESPESA,
                     "valor": pagamento.valor,
@@ -158,11 +153,7 @@ def _regularizar_pagamentos_contas_fixas(usuario):
                         else getattr(transacao, campo)
                     )
 
-                    valor_novo = (
-                        valor.pk
-                        if campo == "categoria"
-                        else valor
-                    )
+                    valor_novo = valor.pk if campo == "categoria" else valor
 
                     if valor_atual != valor_novo:
                         setattr(transacao, campo, valor)
@@ -763,61 +754,139 @@ def extrato(request):
     if not 1 <= mes_atual <= 12:
         mes_atual = hoje.month
 
-    categoria_id = request.GET.get("categoria")
-    tipo = request.GET.get("tipo")
+    if not 1900 <= ano_atual <= 2100:
+        ano_atual = hoje.year
+
+    periodo = request.GET.get("periodo", "mensal")
+    if periodo not in {"diario", "semanal", "mensal", "anual"}:
+        periodo = "mensal"
+
+    tipo = request.GET.get("tipo", "")
+    if tipo not in (
+        Transaction.Tipo.RECEITA,
+        Transaction.Tipo.DESPESA,
+        "",
+    ):
+        tipo = ""
+
+    categoria_id = request.GET.get("categoria", "").strip()
+
+    primeiro_dia_mes = date(ano_atual, mes_atual, 1)
+
+    if mes_atual == 12:
+        primeiro_dia_mes_seguinte = date(ano_atual + 1, 1, 1)
+    else:
+        primeiro_dia_mes_seguinte = date(ano_atual, mes_atual + 1, 1)
+
+    ultimo_dia_mes = primeiro_dia_mes_seguinte - timedelta(days=1)
+
+    if periodo == "diario":
+        data_inicio = hoje
+        data_fim = hoje
+    elif periodo == "semanal":
+        data_inicio = hoje - timedelta(days=hoje.weekday())
+        data_fim = data_inicio + timedelta(days=6)
+    elif periodo == "anual":
+        data_inicio = date(ano_atual, 1, 1)
+        data_fim = date(ano_atual, 12, 31)
+    else:
+        data_inicio = primeiro_dia_mes
+        data_fim = ultimo_dia_mes
 
     qs = Transaction.objects.filter(
         usuario=request.user,
-        data__month=mes_atual,
-        data__year=ano_atual,
+        data__range=(data_inicio, data_fim),
     ).select_related("categoria")
 
-    if categoria_id:
-        qs = qs.filter(categoria_id=categoria_id)
-
-    if tipo in (
-        Transaction.Tipo.RECEITA,
-        Transaction.Tipo.DESPESA,
-    ):
+    if tipo:
         qs = qs.filter(tipo=tipo)
 
-    if mes_atual == 1:
-        mes_anterior, ano_anterior = 12, ano_atual - 1
+    if tipo == Transaction.Tipo.RECEITA:
+        categorias_filtro = Category.objects.para_usuario(
+            request.user,
+            Category.Tipo.RECEITA,
+        )
+    elif tipo == Transaction.Tipo.DESPESA:
+        categorias_filtro = Category.objects.para_usuario(
+            request.user,
+            Category.Tipo.DESPESA,
+        )
     else:
-        mes_anterior, ano_anterior = mes_atual - 1, ano_atual
+        categorias_filtro = Category.objects.para_usuario(request.user)
+
+    if categoria_id:
+        if categoria_id.isdigit():
+            categoria_valida = categorias_filtro.filter(
+                pk=int(categoria_id),
+            ).exists()
+
+            if categoria_valida:
+                qs = qs.filter(categoria_id=int(categoria_id))
+            else:
+                categoria_id = ""
+        else:
+            categoria_id = ""
+
+    if mes_atual == 1:
+        mes_anterior = 12
+        ano_anterior = ano_atual - 1
+    else:
+        mes_anterior = mes_atual - 1
+        ano_anterior = ano_atual
 
     despesas_mes_atual = (
         Transaction.objects.filter(
             usuario=request.user,
             tipo=Transaction.Tipo.DESPESA,
-            data__month=mes_atual,
-            data__year=ano_atual,
-        ).aggregate(t=Sum("valor"))["t"]
+            status=Transaction.Status.CONFIRMADA,
+            data__gte=primeiro_dia_mes,
+            data__lt=primeiro_dia_mes_seguinte,
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0.00")
     )
+
+    inicio_mes_anterior = date(ano_anterior, mes_anterior, 1)
+
+    if mes_anterior == 12:
+        inicio_mes_seguinte_ao_anterior = date(ano_anterior + 1, 1, 1)
+    else:
+        inicio_mes_seguinte_ao_anterior = date(
+            ano_anterior,
+            mes_anterior + 1,
+            1,
+        )
 
     despesas_mes_anterior = (
         Transaction.objects.filter(
             usuario=request.user,
             tipo=Transaction.Tipo.DESPESA,
-            data__month=mes_anterior,
-            data__year=ano_anterior,
-        ).aggregate(t=Sum("valor"))["t"]
+            status=Transaction.Status.CONFIRMADA,
+            data__gte=inicio_mes_anterior,
+            data__lt=inicio_mes_seguinte_ao_anterior,
+        ).aggregate(total=Sum("valor"))["total"]
         or Decimal("0.00")
     )
 
     if despesas_mes_anterior > 0:
         variacao_percentual = round(
-            float(despesas_mes_atual - despesas_mes_anterior)
-            / float(despesas_mes_anterior)
-            * 100
+            float(
+                (despesas_mes_atual - despesas_mes_anterior)
+                / despesas_mes_anterior
+                * 100
+            )
         )
+    elif despesas_mes_atual > 0:
+        variacao_percentual = 100
     else:
         variacao_percentual = None
 
     categorias_despesa = Category.objects.para_usuario(
         request.user,
         Category.Tipo.DESPESA,
+    )
+    categorias_receita = Category.objects.para_usuario(
+        request.user,
+        Category.Tipo.RECEITA,
     )
 
     lista_meses = [
@@ -836,17 +905,35 @@ def extrato(request):
     ]
 
     anos_disponiveis = list(
-        range(hoje.year - 3, hoje.year + 6)
+        range(
+            min(hoje.year - 3, ano_atual - 1),
+            max(hoje.year + 5, ano_atual + 1) + 1,
+        )
     )
+
+    if periodo == "diario":
+        descricao_periodo = "Hoje"
+    elif periodo == "semanal":
+        descricao_periodo = "Esta semana"
+    elif periodo == "anual":
+        descricao_periodo = f"Ano de {ano_atual}"
+    else:
+        descricao_periodo = f"{mes_atual:02d}/{ano_atual}"
 
     return render(
         request,
         "transactions/extrato.html",
         {
-            "transacoes": qs.order_by("data", "-criado_em"),
+            "transacoes": qs.order_by("-data", "-criado_em"),
             "categorias_despesa": categorias_despesa,
+            "categorias_receita": categorias_receita,
+            "categorias_filtro": categorias_filtro,
             "filtro_categoria": categoria_id,
             "filtro_tipo": tipo,
+            "filtro_periodo": periodo,
+            "descricao_periodo": descricao_periodo,
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
             "mes_atual": mes_atual,
             "ano_atual": ano_atual,
             "lista_meses": lista_meses,
@@ -914,10 +1001,7 @@ def excluir_transacao(request, pk):
 @login_required
 def assinaturas(request):
     """UC07 — Gerenciar contas fixas e assinaturas recorrentes."""
-    # Recupera os pagamentos antigos antes de exibir as assinaturas.
     regularizadas = _regularizar_pagamentos_contas_fixas(request.user)
-
-    # Gera os vencimentos futuros sem duplicar os que já existem.
     gerar_vencimentos_contas_fixas(request.user)
 
     if regularizadas:
