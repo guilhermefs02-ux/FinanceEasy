@@ -13,6 +13,7 @@ apenas pelo banco ou carteira digital utilizados.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import unicodedata
@@ -24,7 +25,6 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
-# Categorias oficiais existentes no FinanceEasy.
 CATEGORIA_OUTROS = "Outros"
 CATEGORIA_ALIMENTACAO = "Alimentação/Supermercado"
 CATEGORIA_MORADIA = "Moradia/Casa"
@@ -52,13 +52,12 @@ CATEGORIAS_RECEITA_PADRAO = [
 ]
 
 
-# Regras de despesas.
-# A comparação é feita com texto sem acentos e em maiúsculas.
+# Regras para despesas.
 REGRAS_PALAVRA_CHAVE = [
     (
         r"\bIFOOD\b|\bRAPPI\b|\bPIZZARIA\b|\bRESTAURANTE\b|"
         r"\bLANCHONETE\b|\bPADARIA\b|\bACOUGUE\b|\bHORTIFRUTI\b|"
-        r"\bSUPERMERCADO\b|\bMERCADO\b|\bMERCADINHO\b|"
+        r"\bSUPERMERCADO\b|\bMERCADO\s+CARDOSO\b|\bMERCADINHO\b|"
         r"\bBURGER\s?KING\b|\bMCDONALD|\bHABIBS\b|"
         r"\bLANCHES\b|\bCONFEITARIA\b|\bPASTELARIA\b",
         CATEGORIA_ALIMENTACAO,
@@ -85,7 +84,7 @@ REGRAS_PALAVRA_CHAVE = [
         r"\bTIM\b|\bOI\s?FIBRA\b|\bINTERNET\b|\bALUGUEL\b|"
         r"\bCONDOMINIO\b|\bIPTU\b|\bENERGIA\s?ELETRICA\b|"
         r"\bAGUA\s?E\s?ESGOTO\b|\bGAS\s?ENCANADO\b|"
-        r"\bSANEPAR\b|\bSANEAGO\b|\bEMASA\b",
+        r"\bSANEAGO\b|\bEMASA\b",
         CATEGORIA_MORADIA,
     ),
     (
@@ -100,8 +99,7 @@ REGRAS_PALAVRA_CHAVE = [
         r"\bPARQUE\s?DE\s?DIVERSAO\b|\bBOLICHE\b",
         CATEGORIA_LAZER,
     ),
-    # Não existe uma categoria específica de saúde no cadastro padrão.
-    # Por isso, esses estabelecimentos permanecem em Outros.
+    # Não há categoria específica de saúde no cadastro padrão.
     (
         r"\bFARMACIA\b|\bDROGARIA\b|\bDROGASIL\b|\bPACHECO\b|"
         r"\bCLINICA\b|\bHOSPITAL\b|\bLABORATORIO\b|"
@@ -139,7 +137,6 @@ REGRAS_RECEITA = [
 ]
 
 
-# Não se deve deduzir a finalidade a partir de uma transferência genérica.
 PADROES_TRANSFERENCIA_GENERICA = [
     r"\bTRANSFERENCIA\s+(?:ENVIADA|RECEBIDA)\b",
     r"\bTRANSFERENCIA\s+(?:ENTRE\s+CONTAS|PIX)\b",
@@ -161,8 +158,8 @@ PADROES_BOLETO_GENERICO = [
 @dataclass
 class SugestaoCategoria:
     nome_categoria: str
-    confianca: str  # "alta" ou "baixa"
-    origem: str  # "regra" | "huggingface" | "padrao"
+    confianca: str
+    origem: str
 
 
 def _normalizar(texto: str) -> str:
@@ -224,9 +221,9 @@ def _categorias_despesa_labels() -> list[str]:
         return CATEGORIAS_DESPESA_PADRAO.copy()
 
     permitidas = set(CATEGORIAS_DESPESA_PADRAO)
-    return [nome for nome in existentes if nome in permitidas] or [
-        CATEGORIA_OUTROS
-    ]
+    labels = [nome for nome in existentes if nome in permitidas]
+
+    return labels or [CATEGORIA_OUTROS]
 
 
 def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
@@ -239,7 +236,9 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
     descricao_normalizada = _normalizar(descricao)
     cache_key = (
         "hf_categoria:v2:"
-        + hashlib_sha256(descricao_normalizada + "|" + "|".join(labels))
+        + hashlib.sha256(
+            (descricao_normalizada + "|" + "|".join(labels)).encode("utf-8")
+        ).hexdigest()
     )
 
     cached = cache.get(cache_key)
@@ -275,8 +274,6 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
             else melhor["label"]
         )
 
-        # Não tratar uma pontuação baixa como certeza:
-        # ainda assim, preservar a melhor sugestão para revisão.
         if label not in labels:
             logger.warning(
                 "Hugging Face retornou categoria fora da lista permitida: %s",
@@ -304,25 +301,18 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
         return None
 
 
-def hashlib_sha256(texto: str) -> str:
-    """Gera chave de cache estável para descrição e categorias."""
-    import hashlib
-
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
-
-
 def sugerir_categoria(
     descricao: str,
     tipo: str = "despesa",
 ) -> SugestaoCategoria:
-    """Sugere a melhor categoria, indicando quando precisa de revisão."""
+    """Sugere uma categoria e indica quando precisa de revisão."""
 
     if tipo not in ("receita", "despesa"):
         tipo = "despesa"
 
     descricao_normalizada = _normalizar(descricao)
 
-    # 1. Regras específicas têm prioridade sobre a IA.
+    # 1. Regras específicas têm prioridade.
     sugestao = _por_regras(descricao, tipo)
     if sugestao:
         return sugestao
@@ -341,8 +331,7 @@ def sugerir_categoria(
             origem="padrao",
         )
 
-    # 3. A IA só classifica despesas. Para receitas sem evidência
-    # explícita, não presumimos que o recebimento seja salário ou renda extra.
+    # 3. A IA classifica despesas sem regra específica.
     if tipo == "despesa":
         sugestao = _por_huggingface(descricao)
         if sugestao:
