@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Mercado — FinanceEasy{% endblock %}
+
+{% block content %}
+<style>
+    .mercado-page {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 0;
+        color: var(--text, #242027);
+    }
+
+    .mercado-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .mercado-header h1 {
+        margin: 0 0 8px;
+        font-size: clamp(1.6rem, 3vw, 2.2rem);
+        font-weight: 800;
+    }
+
+    .mercado-subtitle {
+        margin: 0;
+        color: var(--muted, #706975);
+        line-height: 1.6;
+    }
+
+    .mercado-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        color: var(--primary, #8F008F);
+        border: 1px solid var(--border, #e6dfe9);
+        background: var(--surface, #fff);
+        transition: transform .2s ease, background .2s ease;
+    }
+
+    .mercado-back:hover {
+        transform: translateY(-1px);
+        background: var(--surface-hover, #F5F1F7);
+    }
+
+    .mercado-section {
+        margin-top: 28px;
+    }
+
+    .mercado-section-title {
+        margin: 0 0 14px;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .mercado-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+        gap: 16px;
+    }
+
+    .mercado-card {
+        min-width: 0;
+        padding: 20px;
+        border-radius: 18px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e6dfe9);
+        box-shadow: 0 5px 18px rgba(25, 10, 35, .045);
+    }
+
+    .mercado-card-label {
+        color: var(--muted, #706975);
+        font-size: .85rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .mercado-card-title {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    .mercado-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+    }
+
+    .mercado-detail {
+        color: var(--muted, #706975);
+        font-size: .85rem;
+        margin-top: 8px;
+    }
+
+    .mercado-variation {
+        display: inline-flex;
+        margin-top: 10px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: .8rem;
+        font-weight: 800;
+        background: var(--surface-hover, #F5F1F7);
+    }
+
+    .mercado-positive {
+        color: var(--success, #16834A);
+    }
+
+    .mercado-negative {
+        color: var(--danger, #C73545);
+    }
+
+    .mercado-neutral {
+        color: var(--muted, #706975);
+    }
+
+    .mercado-notice {
+        padding: 18px;
+        border-radius: 14px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e6dfe9);
+        color: var(--muted, #706975);
+        line-height: 1.65;
+    }
+
+    .mercado-notice strong {
+        display: block;
+        color: var(--text, #242027);
+        margin-bottom: 6px;
+    }
+
+    .mercado-updated {
+        margin-top: 24px;
+        font-size: .82rem;
+        color: var(--muted, #706975);
+        text-align: right;
+    }
+
+    @media (max-width: 600px) {
+        .mercado-page {
+            padding-top: 12px;
+        }
+
+        .mercado-card {
+            padding: 16px;
+        }
+
+        .mercado-value {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+
+<div class="mercado-page">
+    <header class="mercado-header">
+        <div>
+            <h1>Mercado financeiro</h1>
+            <p class="mercado-subtitle">
+                Acompanhe cotações de moedas, bolsas e indicadores financeiros.
+            </p>
+        </div>
+
+        <a class="mercado-back" href="{% url 'dashboard:painel' %}">
+            ← Voltar ao painel
+        </a>
+    </header>
+
+    {% if hgbrasil.disponivel %}
+
+        <section class="mercado-section">
+            <h2 class="mercado-section-title">Cotações de moedas</h2>
+
+            {% if hgbrasil.moedas %}
+                <div class="mercado-grid">
+                    {% for moeda in hgbrasil.moedas %}
+                        <article class="mercado-card">
+                            <div class="mercado-card-label">
+                                {{ moeda.codigo }}
+                            </div>
+
+                            <h3 class="mercado-card-title">
+                                {{ moeda.nome }}
+                            </h3>
+
+                            <div class="mercado-card-label">Compra</div>
+                            <div class="mercado-value">
+                                {% if moeda.compra != None %}
+                                    {{ moeda.compra|floatformat:2 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+
+                            <div class="mercado-detail">
+                                Venda:
+                                {% if moeda.venda != None %}
+                                    {{ moeda.venda|floatformat:2 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+
+                            {% if moeda.variacao != None %}
+                                <div class="mercado-variation
+                                    {% if moeda.variacao > 0 %}
+                                        mercado-positive
+                                    {% elif moeda.variacao < 0 %}
+                                        mercado-negative
+                                    {% else %}
+                                        mercado-neutral
+                                    {% endif %}">
+                                    {% if moeda.variacao > 0 %}+{% endif %}
+                                    {{ moeda.variacao|floatformat:2 }}%
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="mercado-notice">
+                    Nenhuma cotação de moeda está disponível neste momento.
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="mercado-section">
+            <h2 class="mercado-section-title">Indicadores de juros</h2>
+
+            <div class="mercado-grid">
+                <article class="mercado-card">
+                    <div class="mercado-card-label">Taxa básica de juros</div>
+                    <h3 class="mercado-card-title">Selic</h3>
+
+                    <div class="mercado-value">
+                        {% if hgbrasil.taxas.selic != None %}
+                            {{ hgbrasil.taxas.selic|floatformat:2 }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+
+                    <div class="mercado-detail">
+                        Indicador da taxa básica de juros brasileira.
+                    </div>
+                </article>
+
+                <article class="mercado-card">
+                    <div class="mercado-card-label">Referência financeira</div>
+                    <h3 class="mercado-card-title">CDI</h3>
+
+                    <div class="mercado-value">
+                        {% if hgbrasil.taxas.cdi != None %}
+                            {{ hgbrasil.taxas.cdi|floatformat:2 }}%
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+
+                    <div class="mercado-detail">
+                        Referência utilizada em diversos investimentos.
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="mercado-section">
+            <h2 class="mercado-section-title">Bolsas de valores</h2>
+
+            {% if hgbrasil.bolsas %}
+                <div class="mercado-grid">
+                    {% for bolsa in hgbrasil.bolsas %}
+                        <article class="mercado-card">
+                            <div class="mercado-card-label">
+                                {{ bolsa.codigo }}
+                            </div>
+
+                            <h3 class="mercado-card-title">
+                                {{ bolsa.nome }}
+                            </h3>
+
+                            <div class="mercado-value">
+                                {% if bolsa.pontos != None %}
+                                    {{ bolsa.pontos|floatformat:2 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </div>
+
+                            <div class="mercado-detail">Pontos</div>
+
+                            {% if bolsa.variacao != None %}
+                                <div class="mercado-variation
+                                    {% if bolsa.variacao > 0 %}
+                                        mercado-positive
+                                    {% elif bolsa.variacao < 0 %}
+                                        mercado-negative
+                                    {% else %}
+                                        mercado-neutral
+                                    {% endif %}">
+                                    {% if bolsa.variacao > 0 %}+{% endif %}
+                                    {{ bolsa.variacao|floatformat:2 }}%
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="mercado-notice">
+                    Não há dados de bolsas disponíveis neste momento.
+                </div>
+            {% endif %}
+        </section>
+
+        {% if hgbrasil.atualizado_em %}
+            <p class="mercado-updated">
+                Última atualização: {{ hgbrasil.atualizado_em }}
+            </p>
+        {% endif %}
+
+    {% else %}
+        <section class="mercado-notice">
+            <strong>Cotações temporariamente indisponíveis</strong>
+
+            {{ hgbrasil.motivo_indisponivel|default:"Não foi possível carregar os indicadores financeiros neste momento." }}
+
+            <p>
+                Os demais recursos do FinanceEasy continuam disponíveis.
+                Tente acessar esta página novamente mais tarde.
+            </p>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
