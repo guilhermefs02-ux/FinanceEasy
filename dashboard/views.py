@@ -325,8 +325,6 @@ def painel(request):
         default=Decimal("0"),
     )
 
-    dados_hgbrasil = obter_dados_financeiros()
-
     colchao = Goal.objects.filter(
         usuario=request.user,
         is_colchao_padrao=True,
@@ -406,7 +404,6 @@ def painel(request):
         "total_avisos": central_avisos["total_avisos"],
         "top_categorias": top_categorias,
         "maior_categoria_total": maior_categoria_total,
-        "hgbrasil": dados_hgbrasil,
         "colchao": colchao,
         "objetivos": objetivos,
         "total_acumulado_objetivos": total_acumulado_objetivos,
@@ -423,6 +420,20 @@ def painel(request):
         request,
         "dashboard/painel.html",
         contexto,
+    )
+
+
+@login_required
+def mercado(request):
+    """Exibe indicadores financeiros em uma página independente."""
+    dados_hgbrasil = obter_dados_financeiros()
+
+    return render(
+        request,
+        "dashboard/mercado.html",
+        {
+            "hgbrasil": dados_hgbrasil,
+        },
     )
 
 
