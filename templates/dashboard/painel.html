@@ -17,7 +17,6 @@
 
   .fe-painel .fe-card,
   .fe-painel .fe-competencia,
-  .fe-painel .fe-aviso-item,
   .fe-painel .fe-resumo-card,
   .fe-painel .fe-objetivo-card {
     border-radius: var(--fe-painel-radius);
@@ -261,63 +260,6 @@
     color: #dc3545;
   }
 
-  /* Avisos */
-
-  .fe-painel .fe-aviso-grupo-titulo {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 9px;
-    font-size: .9rem;
-    font-weight: 750;
-    margin-bottom: 14px;
-  }
-
-  .fe-painel .fe-aviso-item {
-    padding: 17px;
-    height: 100%;
-    background: var(--fe-surface, var(--bs-body-bg, #fff));
-    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
-    transition: border-color .18s ease, box-shadow .18s ease;
-  }
-
-  .fe-painel .fe-aviso-item:hover {
-    border-color: var(--bs-primary-border-subtle, #b6d4fe);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, .035);
-  }
-
-  .fe-painel .fe-aviso-item p:last-child {
-    margin-bottom: 0;
-  }
-
-  .fe-painel .fe-aviso-data {
-    color: var(--fe-text, var(--bs-secondary-color, #6c757d));
-    font-size: .82rem;
-  }
-
-  .fe-painel .fe-aviso-acao {
-    margin-top: 14px;
-  }
-
-  .fe-painel .fe-aviso-vazio {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 13px;
-    background: var(--fe-surface, var(--bs-tertiary-bg, #f1f3f5));
-  }
-
-  .fe-painel .fe-aviso-vazio-icone {
-    font-size: 1.35rem;
-    flex-shrink: 0;
-  }
-
-  .fe-painel .fe-aviso-vazio p {
-    font-size: .85rem;
-    margin-bottom: 0;
-  }
-
   /* Categorias */
 
   .fe-painel .fe-categoria-item {
@@ -462,7 +404,6 @@
       padding: 20px;
     }
 
-    .fe-painel .fe-aviso-item,
     .fe-painel .fe-objetivo-card {
       padding: 15px;
     }
@@ -699,7 +640,7 @@
     </div>
   </div>
 
-  <!-- Sobra segura -->
+  <!-- Sobra segura: mantida -->
   <div class="row g-3 mb-4">
 
     <div class="col-12">
@@ -735,171 +676,7 @@
 
   </div>
 
-  <!-- Central de avisos -->
-  <section class="fe-card mb-4">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-      <div class="d-flex align-items-center gap-3">
-        <span class="fe-icone-secao">
-          <i class="bi bi-bell"></i>
-        </span>
-        <div>
-          <h2 class="fe-secao-titulo">Central de Avisos</h2>
-          <p class="fe-secao-descricao">
-            Contas recorrentes e parcelas de dívidas.
-          </p>
-        </div>
-      </div>
-
-      <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
-        {{ total_avisos }} pendência{{ total_avisos|pluralize:"s" }}
-      </span>
-    </div>
-
-    <!-- Vencidas -->
-    <div class="mb-4">
-      <div class="fe-aviso-grupo-titulo">
-        <i class="bi bi-exclamation-circle-fill text-danger"></i>
-        <h3 class="h6 fw-bold mb-0">Vencidas</h3>
-        <span class="badge rounded-pill bg-danger">{{ total_vencidos }}</span>
-      </div>
-
-      {% if avisos_vencidos %}
-        <div class="row g-3">
-          {% for item in avisos_vencidos %}
-            <div class="col-12 col-md-6 col-xl-4">
-              <div class="fe-aviso-item">
-
-                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                  <span class="small text-muted">
-                    {% if item.tipo == "divida" %}
-                      <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
-                    {% elif item.periodicidade == "anual" %}
-                      <i class="bi bi-calendar-event me-1"></i>Conta anual
-                    {% else %}
-                      <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
-                    {% endif %}
-                  </span>
-                  <span class="badge bg-danger">Vencida</span>
-                </div>
-
-                <p class="fw-bold mb-2">{{ item.nome }}</p>
-
-                <p class="h5 fw-bold mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
-                  {{ item.valor|brl }}
-                </p>
-
-                <p class="fe-aviso-data mb-2">
-                  <i class="bi bi-calendar3 me-1"></i>
-                  Vencimento: {{ item.vencimento|date:"d/m/Y" }}
-                </p>
-
-                {% if item.categoria %}
-                  <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
-                {% endif %}
-
-                {% if item.tipo == "conta" and item.pagamento %}
-                  <form method="post"
-                        action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
-                        class="fe-aviso-acao">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success btn-sm w-100">
-                      <i class="bi bi-check-circle me-1"></i>Marcar como pago
-                    </button>
-                  </form>
-                {% endif %}
-
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="fe-aviso-vazio">
-          <i class="bi bi-check-circle-fill text-success fe-aviso-vazio-icone"></i>
-          <div>
-            <p class="fw-semibold mb-1">Tudo em dia por aqui!</p>
-            <p class="text-muted">Nenhuma conta ou parcela vencida registrada.</p>
-          </div>
-        </div>
-      {% endif %}
-    </div>
-
-    <hr class="my-4">
-
-    <!-- A vencer -->
-    <div>
-      <div class="fe-aviso-grupo-titulo">
-        <i class="bi bi-calendar-check text-warning"></i>
-        <h3 class="h6 fw-bold mb-0">A vencer nos próximos 7 dias</h3>
-        <span class="badge rounded-pill bg-warning text-dark">{{ total_a_vencer }}</span>
-      </div>
-
-      {% if avisos_a_vencer %}
-        <div class="row g-3">
-          {% for item in avisos_a_vencer %}
-            <div class="col-12 col-md-6 col-xl-4">
-              <div class="fe-aviso-item">
-
-                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                  <span class="small text-muted">
-                    {% if item.tipo == "divida" %}
-                      <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
-                    {% elif item.periodicidade == "anual" %}
-                      <i class="bi bi-calendar-event me-1"></i>Conta anual
-                    {% else %}
-                      <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
-                    {% endif %}
-                  </span>
-
-                  {% if item.vencimento|dias_ate == "vence hoje" %}
-                    <span class="badge bg-danger">Vence hoje</span>
-                  {% else %}
-                    <span class="badge bg-warning text-dark">
-                      {{ item.vencimento|dias_ate }}
-                    </span>
-                  {% endif %}
-                </div>
-
-                <p class="fw-bold mb-2">{{ item.nome }}</p>
-
-                <p class="h5 fw-bold mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
-                  {{ item.valor|brl }}
-                </p>
-
-                <p class="fe-aviso-data mb-2">
-                  <i class="bi bi-calendar3 me-1"></i>
-                  Vencimento: {{ item.vencimento|date:"d/m/Y" }}
-                </p>
-
-                {% if item.categoria %}
-                  <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
-                {% endif %}
-
-                {% if item.tipo == "conta" and item.pagamento %}
-                  <form method="post"
-                        action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
-                        class="fe-aviso-acao">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success btn-sm w-100">
-                      <i class="bi bi-check-circle me-1"></i>Marcar como pago
-                    </button>
-                  </form>
-                {% endif %}
-
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="fe-aviso-vazio">
-          <i class="bi bi-calendar-check text-success fe-aviso-vazio-icone"></i>
-          <div>
-            <p class="fw-semibold mb-1">Nenhum vencimento próximo</p>
-            <p class="text-muted">Nenhuma conta ou parcela vencendo nos próximos 7 dias.</p>
-          </div>
-        </div>
-      {% endif %}
-    </div>
-  </section>
+  <!-- Central de Avisos removida somente desta página -->
 
   <!-- Categorias de despesas -->
   <section class="fe-card mb-4">
@@ -935,11 +712,12 @@
         </div>
       {% endfor %}
     {% else %}
-      <div class="fe-aviso-vazio">
-        <i class="bi bi-receipt text-muted fe-aviso-vazio-icone"></i>
+      <div class="d-flex align-items-center gap-3 p-3 rounded-3"
+           style="background:var(--fe-surface, var(--bs-tertiary-bg, #f1f3f5));">
+        <i class="bi bi-receipt text-muted fs-4"></i>
         <div>
           <p class="fw-semibold mb-1">Nenhuma despesa nesta competência</p>
-          <p class="text-muted">
+          <p class="text-muted small mb-0">
             As categorias aparecerão aqui quando houver despesas confirmadas em
             {{ mes_referencia|date:"F/Y"|capfirst }}.
           </p>
