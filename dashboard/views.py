@@ -14,6 +14,22 @@ from transactions.models import RecurringBillPayment, Transaction
 from .services.hgbrasil import obter_dados_financeiros
 
 
+MESES = [
+    {"numero": 1, "nome": "Janeiro"},
+    {"numero": 2, "nome": "Fevereiro"},
+    {"numero": 3, "nome": "Março"},
+    {"numero": 4, "nome": "Abril"},
+    {"numero": 5, "nome": "Maio"},
+    {"numero": 6, "nome": "Junho"},
+    {"numero": 7, "nome": "Julho"},
+    {"numero": 8, "nome": "Agosto"},
+    {"numero": 9, "nome": "Setembro"},
+    {"numero": 10, "nome": "Outubro"},
+    {"numero": 11, "nome": "Novembro"},
+    {"numero": 12, "nome": "Dezembro"},
+]
+
+
 def _inicio_fim_mes(referencia: date):
     inicio = referencia.replace(day=1)
 
@@ -190,10 +206,45 @@ def _central_de_avisos(user, dias_janela=7):
     }
 
 
+def _inteiro_get_valido(valor, padrao, minimo, maximo):
+    """Converte um parâmetro GET em inteiro dentro dos limites permitidos."""
+    try:
+        numero = int(valor)
+    except (TypeError, ValueError):
+        return padrao
+
+    if minimo <= numero <= maximo:
+        return numero
+
+    return padrao
+
+
 @login_required
 def painel(request):
     hoje = timezone.localdate()
-    inicio_mes, fim_mes = _inicio_fim_mes(hoje)
+
+    # Competência selecionada no painel.
+    mes_selecionado = _inteiro_get_valido(
+        request.GET.get("mes"),
+        hoje.month,
+        1,
+        12,
+    )
+
+    ano_selecionado = _inteiro_get_valido(
+        request.GET.get("ano"),
+        hoje.year,
+        2000,
+        2100,
+    )
+
+    mes_referencia = date(
+        ano_selecionado,
+        mes_selecionado,
+        1,
+    )
+
+    inicio_mes, fim_mes = _inicio_fim_mes(mes_referencia)
 
     transacoes_mes = Transaction.objects.filter(
         usuario=request.user,
@@ -215,6 +266,7 @@ def painel(request):
         or Decimal("0")
     )
 
+    # Mantém o saldo disponível como o acumulado histórico confirmado.
     receitas_confirmadas = (
         Transaction.objects.filter(
             usuario=request.user,
@@ -235,7 +287,7 @@ def painel(request):
 
     saldo_disponivel = receitas_confirmadas - despesas_confirmadas
 
-    # Central de Avisos.
+    # Central de avisos: continua baseada na data atual.
     central_avisos = _central_de_avisos(
         request.user,
         dias_janela=7,
@@ -310,19 +362,36 @@ def painel(request):
         )
     )
 
-    receitas_detalhes = Transaction.objects.filter(
-        usuario=request.user,
+    receitas_detalhes = transacoes_mes.filter(
         tipo=Transaction.Tipo.RECEITA,
-        data__range=[inicio_mes, fim_mes],
-        status=Transaction.Status.CONFIRMADA,
     ).order_by("-data")
 
-    despesas_detalhes = Transaction.objects.filter(
-        usuario=request.user,
+    despesas_detalhes = transacoes_mes.filter(
         tipo=Transaction.Tipo.DESPESA,
-        data__range=[inicio_mes, fim_mes],
-        status=Transaction.Status.CONFIRMADA,
     ).order_by("-data")
+
+    # Lista de anos para os controles de navegação do painel.
+    primeiro_ano_transacao = (
+        Transaction.objects.filter(
+            usuario=request.user,
+        )
+        .order_by("data")
+        .values_list("data__year", flat=True)
+        .first()
+    )
+
+    ano_inicial = min(
+        primeiro_ano_transacao or hoje.year,
+        hoje.year,
+    )
+
+    anos_disponiveis = list(
+        range(ano_inicial, hoje.year + 1)
+    )
+
+    if ano_selecionado not in anos_disponiveis:
+        anos_disponiveis.append(ano_selecionado)
+        anos_disponiveis.sort()
 
     contexto = {
         "total_receitas": total_receitas,
@@ -341,7 +410,11 @@ def painel(request):
         "colchao": colchao,
         "objetivos": objetivos,
         "total_acumulado_objetivos": total_acumulado_objetivos,
-        "mes_referencia": hoje,
+        "mes_referencia": mes_referencia,
+        "mes_selecionado": mes_selecionado,
+        "ano_selecionado": ano_selecionado,
+        "meses_disponiveis": MESES,
+        "anos_disponiveis": anos_disponiveis,
         "receitas_detalhes": receitas_detalhes,
         "despesas_detalhes": despesas_detalhes,
     }
