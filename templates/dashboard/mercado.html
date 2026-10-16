@@ -526,4 +526,26 @@
 
         <div class="mercado-footer">
             <strong>Sobre os indicadores:</strong>
-            os valores são fornecidos
+            os valores são fornecidos pela integração financeira e podem ter horários
+            de atualização diferentes. As variações representam a oscilação informada
+            pela fonte e não constituem recomendação de investimento.
+        </div>
+
+    {% else %}
+        <div class="mercado-notice">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <div>
+                <strong>Cotações temporariamente indisponíveis</strong>
+
+                {{ hgbrasil.motivo_indisponivel|default:"Não foi possível carregar as cotações neste momento." }}
+
+                <p class="mb-0 mt-2">
+                    Os demais recursos do FinanceEasy continuam disponíveis.
+                    Tente novamente mais tarde.
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
