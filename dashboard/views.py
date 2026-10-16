@@ -52,7 +52,7 @@ def _data_valida_vencimento(ano, mes, dia):
 
 
 def _vencimento_referencia_conta(conta, hoje):
-    """Retorna o vencimento da competência atual da conta recorrente."""
+    """Calcula o vencimento da competência atual da conta recorrente."""
     if conta.periodicidade == "anual":
         mes = conta.mes_vencimento
 
@@ -74,11 +74,11 @@ def _vencimento_referencia_conta(conta, hoje):
 
 def _vencimento_referencia_divida(divida, hoje):
     """
-    Retorna o vencimento da dívida na competência atual.
+    Calcula o vencimento da competência atual da dívida.
 
-    Como o modelo Debt não armazena o vencimento individual de cada
-    parcela, utiliza o dia de vencimento cadastrado e o histórico
-    de pagamentos como referência.
+    O modelo não registra a data de vencimento individual de cada
+    parcela. Por isso, utiliza o dia cadastrado e os pagamentos
+    realizados no mês como referência.
     """
     if divida.quitada or divida.parcelas_restantes <= 0:
         return None
@@ -110,9 +110,25 @@ def _vencimento_referencia_divida(divida, hoje):
     return vencimento
 
 
+def _classificar_aviso(item, hoje, limite, vencidos, a_vencer):
+    """Adiciona o aviso à lista correspondente, sem duplicar ocorrências."""
+    vencimento = item["vencimento"]
+
+    if vencimento < hoje:
+        vencidos.append(item)
+    elif vencimento <= limite:
+        a_vencer.append(item)
+
+
 def _central_de_avisos(user, dias_janela=7):
     """
-    Centraliza os avisos de contas recorrentes e dívidas em aberto.
+    Centraliza contas fixas pendentes e parcelas de dívidas.
+
+    Inclui:
+    - ocorrências de contas fixas já vencidas e não pagas;
+    - vencimentos da competência atual;
+    - vencimentos nos próximos dias da janela;
+    - parcelas de dívidas ainda não pagas no mês.
     """
     hoje = timezone.localdate()
     limite = hoje + timedelta(days=dias_janela)
@@ -120,11 +136,58 @@ def _central_de_avisos(user, dias_janela=7):
     avisos_vencidos = []
     avisos_a_vencer = []
 
-    # Contas recorrentes mensais e anuais.
-    for conta in user.recorrencias.filter(ativo=True):
+    # Evita mostrar duas vezes a mesma ocorrência de uma conta fixa.
+    pagamentos_processados = set()
+
+    # Contas fixas: primeiro, recupera todas as ocorrências antigas
+    # vencidas e pendentes, inclusive de contas posteriormente inativadas.
+    contas = user.recorrencias.all().prefetch_related("pagamentos")
+
+    for conta in contas:
+        pagamentos_antigos = conta.pagamentos.filter(
+            status="pendente",
+            data_vencimento__lt=hoje,
+        ).order_by("data_vencimento")
+
+        for pagamento in pagamentos_antigos:
+            if pagamento.pk in pagamentos_processados:
+                continue
+
+            pagamentos_processados.add(pagamento.pk)
+
+            item = {
+                "tipo": "conta",
+                "periodicidade": conta.periodicidade,
+                "nome": conta.nome_servico,
+                "valor": pagamento.valor,
+                "vencimento": pagamento.data_vencimento,
+                "categoria": conta.categoria,
+                "conta": conta,
+                "pagamento": pagamento,
+            }
+
+            _classificar_aviso(
+                item,
+                hoje,
+                limite,
+                avisos_vencidos,
+                avisos_a_vencer,
+            )
+
+    # Para contas ativas, garante que a ocorrência da competência atual
+    # exista. Isso também permite mostrar vencimentos próximos.
+    for conta in contas:
+        if not conta.ativo:
+            continue
+
         vencimento = _vencimento_referencia_conta(conta, hoje)
 
         if vencimento is None:
+            continue
+
+        # Não é necessário criar antecipadamente ocorrências muito
+        # distantes da janela de avisos.
+        if vencimento > limite:
             continue
 
         pagamento, _ = conta.pagamentos.get_or_create(
@@ -138,23 +201,32 @@ def _central_de_avisos(user, dias_janela=7):
         if pagamento.status == "pago":
             continue
 
+        if pagamento.pk in pagamentos_processados:
+            continue
+
+        pagamentos_processados.add(pagamento.pk)
+
         item = {
             "tipo": "conta",
             "periodicidade": conta.periodicidade,
             "nome": conta.nome_servico,
             "valor": pagamento.valor,
-            "vencimento": vencimento,
+            "vencimento": pagamento.data_vencimento,
             "categoria": conta.categoria,
             "conta": conta,
             "pagamento": pagamento,
         }
 
-        if vencimento < hoje:
-            avisos_vencidos.append(item)
-        elif vencimento <= limite:
-            avisos_a_vencer.append(item)
+        _classificar_aviso(
+            item,
+            hoje,
+            limite,
+            avisos_vencidos,
+            avisos_a_vencer,
+        )
 
-    # Dívidas com parcelas restantes.
+    # Dívidas: o modelo registra pagamentos realizados, mas não cria
+    # uma ocorrência separada para cada parcela ainda pendente.
     dividas = (
         user.dividas.filter(
             quitada=False,
@@ -181,25 +253,34 @@ def _central_de_avisos(user, dias_janela=7):
             "divida": divida,
         }
 
-        if vencimento < hoje:
-            avisos_vencidos.append(item)
-        elif vencimento <= limite:
-            avisos_a_vencer.append(item)
+        _classificar_aviso(
+            item,
+            hoje,
+            limite,
+            avisos_vencidos,
+            avisos_a_vencer,
+        )
 
-    avisos_vencidos.sort(key=lambda item: item["vencimento"])
-    avisos_a_vencer.sort(key=lambda item: item["vencimento"])
+    avisos_vencidos.sort(
+        key=lambda item: item["vencimento"]
+    )
+    avisos_a_vencer.sort(
+        key=lambda item: item["vencimento"]
+    )
 
     return {
         "vencidos": avisos_vencidos,
         "a_vencer": avisos_a_vencer,
         "total_vencidos": len(avisos_vencidos),
         "total_a_vencer": len(avisos_a_vencer),
-        "total_avisos": len(avisos_vencidos) + len(avisos_a_vencer),
+        "total_avisos": (
+            len(avisos_vencidos) + len(avisos_a_vencer)
+        ),
     }
 
 
 def _contexto_avisos(user):
-    """Monta os dados compartilhados pela Central de Avisos e pelo painel."""
+    """Monta os dados usados pela Central de Avisos e pelo painel."""
     central_avisos = _central_de_avisos(user, dias_janela=7)
 
     return {
@@ -291,7 +372,6 @@ def painel(request):
 
     saldo_disponivel = receitas_confirmadas - despesas_confirmadas
 
-    # Mantém os avisos no cálculo da sobra segura e nos indicadores do painel.
     dados_avisos = _contexto_avisos(request.user)
     avisos_a_vencer = dados_avisos["avisos_a_vencer"]
 
@@ -477,6 +557,7 @@ def alternar_privacidade(request):
 
 @login_required
 def marcar_notificacoes_lidas(request):
+    """Marca como lidas as notificações do usuário autenticado."""
     if request.method == "POST":
         request.user.notificacoes.filter(lida=False).update(lida=True)
 
