@@ -336,7 +336,6 @@ def importar_extrato(request):
             {"form": form},
         )
 
-    # Prepara os lançamentos antes de consultar o banco de dados.
     linhas_preparadas = []
     hashes_unicos = set()
 
@@ -371,8 +370,6 @@ def importar_extrato(request):
 
         hashes_unicos.add(hash_dedup)
 
-    # Busca hashes já existentes em blocos de até 500 itens.
-    # Isso evita uma consulta .exists() para cada lançamento.
     hashes_existentes = set()
     lista_hashes = list(hashes_unicos)
     tamanho_bloco = 500
@@ -387,9 +384,6 @@ def importar_extrato(request):
 
         hashes_existentes.update(encontrados)
 
-    # Carrega as categorias de despesa e receita uma única vez.
-    # A seleção respeita a ordenação do queryset original e mantém
-    # a primeira categoria encontrada para cada nome e tipo.
     categorias_por_nome = {}
 
     for tipo_categoria in (
@@ -409,12 +403,7 @@ def importar_extrato(request):
 
             categorias_por_nome.setdefault(chave, categoria_item)
 
-    # O conjunto também detecta lançamentos repetidos dentro
-    # do próprio arquivo, mesmo antes de gravá-los no banco.
     hashes_processados = set(hashes_existentes)
-
-    # Mantém o comportamento da categorização atual, mas evita
-    # repetir a mesma sugestão para descrições iguais no arquivo.
     sugestoes_por_descricao = {}
 
     transacoes_novas = []
@@ -483,8 +472,6 @@ def importar_extrato(request):
             )
         )
 
-    # Grava o lote e as transações de uma vez.
-    # Se houver erro na gravação, o banco desfaz toda a operação.
     with db_transaction.atomic():
         batch = ImportBatch.objects.create(
             usuario=request.user,
@@ -815,6 +802,30 @@ def extrato(request):
         else:
             categoria_id = ""
 
+    # Calcula os totais confirmados do período selecionado.
+    # Estes totais independem dos filtros de tipo e categoria da lista.
+    transacoes_confirmadas_periodo = Transaction.objects.filter(
+        usuario=request.user,
+        status=Transaction.Status.CONFIRMADA,
+        data__range=(data_inicio, data_fim),
+    )
+
+    total_receitas_periodo = (
+        transacoes_confirmadas_periodo.filter(
+            tipo=Transaction.Tipo.RECEITA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0.00")
+    )
+
+    total_despesas_periodo = (
+        transacoes_confirmadas_periodo.filter(
+            tipo=Transaction.Tipo.DESPESA,
+        ).aggregate(total=Sum("valor"))["total"]
+        or Decimal("0.00")
+    )
+
+    saldo_periodo = total_receitas_periodo - total_despesas_periodo
+
     if mes_atual == 1:
         mes_anterior = 12
         ano_anterior = ano_atual - 1
@@ -929,6 +940,9 @@ def extrato(request):
             "despesas_mes_atual": despesas_mes_atual,
             "despesas_mes_anterior": despesas_mes_anterior,
             "variacao_percentual": variacao_percentual,
+            "total_receitas_periodo": total_receitas_periodo,
+            "total_despesas_periodo": total_despesas_periodo,
+            "saldo_periodo": saldo_periodo,
         },
     )
 
@@ -1007,7 +1021,6 @@ def excluir_transacao(request, pk):
 @login_required
 def assinaturas(request):
     """UC07 — Gerenciar contas fixas e assinaturas recorrentes."""
-    # Gera vencimentos futuros sem reconstruir transações que foram excluídas.
     gerar_vencimentos_contas_fixas(request.user)
 
     if request.method == "POST":
