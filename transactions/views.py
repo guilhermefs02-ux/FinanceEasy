@@ -45,6 +45,138 @@ from .services.import_parser import (
 from .services.recurrency import gerar_parcelas_futuras
 
 
+def _data_efetiva_pagamento(pagamento):
+    """Obtém a data real do pagamento ou usa o vencimento como alternativa."""
+    if pagamento.pago_em:
+        if timezone.is_aware(pagamento.pago_em):
+            return timezone.localtime(pagamento.pago_em).date()
+        return pagamento.pago_em.date()
+
+    return pagamento.data_vencimento
+
+
+def _regularizar_pagamentos_contas_fixas(usuario):
+    """
+    Regulariza pagamentos antigos sem gerar despesas duplicadas.
+
+    Atualiza transações que já estejam vinculadas ao pagamento.
+    Quando não houver vínculo, procura um lançamento com os mesmos
+    dados específicos da despesa de conta fixa antes de criar outro.
+    """
+    regularizadas = 0
+
+    pagamentos_ids = list(
+        RecurringBillPayment.objects.filter(
+            conta__usuario=usuario,
+            status=RecurringBillPayment.Status.PAGO,
+        ).values_list("pk", flat=True)
+    )
+
+    for pagamento_id in pagamentos_ids:
+        with db_transaction.atomic():
+            pagamento = (
+                RecurringBillPayment.objects.select_for_update()
+                .select_related("conta", "conta__categoria")
+                .filter(
+                    pk=pagamento_id,
+                    conta__usuario=usuario,
+                    status=RecurringBillPayment.Status.PAGO,
+                )
+                .first()
+            )
+
+            if pagamento is None:
+                continue
+
+            conta = pagamento.conta
+            data_pagamento = _data_efetiva_pagamento(pagamento)
+            descricao = f"Pagamento: {conta.nome_servico}"
+
+            transacao = None
+
+            # Primeiro, utiliza somente o vínculo explícito do pagamento.
+            if pagamento.transacao_id:
+                transacao = Transaction.objects.filter(
+                    pk=pagamento.transacao_id,
+                    usuario=usuario,
+                ).first()
+
+            # Sem vínculo válido, procura um lançamento com os dados
+            # específicos da conta fixa, ainda sem pagamento associado.
+            if transacao is None:
+                transacao = (
+                    Transaction.objects.filter(
+                        usuario=usuario,
+                        tipo=Transaction.Tipo.DESPESA,
+                        valor=pagamento.valor,
+                        data=data_pagamento,
+                        categoria=conta.categoria,
+                        descricao=descricao,
+                        origem=Transaction.Origem.MANUAL,
+                        status=Transaction.Status.CONFIRMADA,
+                        tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
+                        pagamentos_contas_fixas__isnull=True,
+                    )
+                    .order_by("criado_em")
+                    .first()
+                )
+
+            if transacao is None:
+                transacao = Transaction.objects.create(
+                    usuario=usuario,
+                    tipo=Transaction.Tipo.DESPESA,
+                    valor=pagamento.valor,
+                    data=data_pagamento,
+                    categoria=conta.categoria,
+                    descricao=descricao,
+                    origem=Transaction.Origem.MANUAL,
+                    status=Transaction.Status.CONFIRMADA,
+                    tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
+                )
+                regularizadas += 1
+            else:
+                # Atualiza somente se os dados da despesa vinculada
+                # precisarem de correção.
+                campos = {
+                    "tipo": Transaction.Tipo.DESPESA,
+                    "valor": pagamento.valor,
+                    "data": data_pagamento,
+                    "categoria": conta.categoria,
+                    "descricao": descricao,
+                    "origem": Transaction.Origem.MANUAL,
+                    "status": Transaction.Status.CONFIRMADA,
+                    "tipo_recorrencia": Transaction.TipoRecorrencia.FIXA,
+                }
+
+                alterada = False
+
+                for campo, valor in campos.items():
+                    valor_atual = (
+                        getattr(transacao, f"{campo}_id")
+                        if campo == "categoria"
+                        else getattr(transacao, campo)
+                    )
+
+                    valor_novo = (
+                        valor.pk
+                        if campo == "categoria"
+                        else valor
+                    )
+
+                    if valor_atual != valor_novo:
+                        setattr(transacao, campo, valor)
+                        alterada = True
+
+                if alterada:
+                    transacao.save()
+
+            if pagamento.transacao_id != transacao.pk:
+                pagamento.transacao = transacao
+                pagamento.save(update_fields=["transacao"])
+
+    return regularizadas
+
+
 @login_required
 def registrar_receita(request):
     if request.method == "POST":
@@ -619,7 +751,7 @@ def _sugerir_baixas_de_divida(user, batch):
 @login_required
 def extrato(request):
     """UC09 — Extrato consolidado, filtros e navegação temporal."""
-    hoje = date.today()
+    hoje = timezone.localdate()
 
     try:
         mes_atual = int(request.GET.get("mes", hoje.month))
@@ -781,6 +913,16 @@ def excluir_transacao(request, pk):
 @login_required
 def assinaturas(request):
     """UC07 — Gerenciar contas fixas e assinaturas recorrentes."""
+    # Recupera os pagamentos antigos antes de exibir as assinaturas.
+    regularizadas = _regularizar_pagamentos_contas_fixas(request.user)
+
+    if regularizadas:
+        messages.success(
+            request,
+            f"{regularizadas} despesa(s) de conta(s) fixa(s) "
+            "antiga(s) foram recuperadas e vinculadas ao extrato.",
+        )
+
     if request.method == "POST":
         form = RecurringBillForm(
             request.POST,
@@ -791,7 +933,6 @@ def assinaturas(request):
             recorrencia = form.save(commit=False)
             recorrencia.usuario = request.user
 
-            # Para despesas mensais, o mês não se aplica.
             if (
                 recorrencia.periodicidade
                 == RecurringBill.Periodicidade.MENSAL
@@ -917,8 +1058,6 @@ def marcar_conta_fixa_paga(request, pagamento_id):
 
         transacao = None
 
-        # Reutiliza apenas a transação vinculada a este pagamento
-        # e que pertence ao usuário atual.
         if pagamento.transacao_id:
             transacao = Transaction.objects.filter(
                 pk=pagamento.transacao_id,
@@ -933,9 +1072,7 @@ def marcar_conta_fixa_paga(request, pagamento_id):
             transacao.descricao = f"Pagamento: {conta.nome_servico}"
             transacao.origem = Transaction.Origem.MANUAL
             transacao.status = Transaction.Status.CONFIRMADA
-            transacao.tipo_recorrencia = (
-                Transaction.TipoRecorrencia.FIXA
-            )
+            transacao.tipo_recorrencia = Transaction.TipoRecorrencia.FIXA
             transacao.save()
         else:
             transacao = Transaction.objects.create(
@@ -1121,7 +1258,7 @@ def excluir_categoria(request, pk):
 
 @login_required
 def extrato_view(request):
-    hoje = date.today()
+    hoje = timezone.localdate()
 
     try:
         mes = int(request.GET.get("mes", hoje.month))
@@ -1155,7 +1292,7 @@ def extrato_view(request):
 @login_required
 def lancamentos_futuros_view(request):
     """Exibe previsão agrupada por parcelamento e recorrência futura."""
-    hoje = date.today()
+    hoje = timezone.localdate()
 
     transacoes_futuras = Transaction.objects.filter(
         usuario=request.user,
@@ -1226,7 +1363,7 @@ def lancamentos_futuros_view(request):
 
 @login_required
 def comparativo_mensal(request):
-    hoje = date.today().replace(day=1)
+    hoje = timezone.localdate().replace(day=1)
 
     meses_labels_6 = []
     receitas_data_6 = []
