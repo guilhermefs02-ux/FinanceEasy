@@ -5,652 +5,1218 @@
 {% block content %}
 
 <style>
-  .fe-aviso-item {
-    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
-    border: 1px solid var(--fe-border, #dee2e6);
-    border-radius: 12px;
-    padding: 16px;
-    height: 100%;
+  /* =========================================================
+     FINANCEEASY — PAINEL PRINCIPAL
+     Estilos locais: não altera base.html nem outras páginas.
+     ========================================================= */
+
+  .fe-painel {
+    --fe-painel-radius: 18px;
+    --fe-painel-gap: 18px;
   }
 
-  .fe-aviso-item p:last-child {
+  .fe-painel .fe-card,
+  .fe-painel .fe-competencia,
+  .fe-painel .fe-aviso-item,
+  .fe-painel .fe-resumo-card,
+  .fe-painel .fe-objetivo-card {
+    border-radius: var(--fe-painel-radius);
+  }
+
+  .fe-painel .fe-card {
+    padding: 22px;
     margin-bottom: 0;
   }
 
-  .fe-aviso-data {
-    color: var(--fe-text, var(--bs-body-color, inherit));
+  .fe-painel .fe-secao-titulo {
+    font-size: 1rem;
+    font-weight: 750;
+    letter-spacing: -.025em;
+    margin-bottom: 5px;
+  }
+
+  .fe-painel .fe-secao-descricao {
+    color: var(--fe-text, var(--bs-secondary-color, #6c757d));
     font-size: .875rem;
+    line-height: 1.5;
+    margin-bottom: 0;
   }
 
-  .fe-aviso-acao {
-    margin-top: 14px;
+  .fe-painel .fe-icone-secao {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 42px;
+    border-radius: 13px;
+    background: var(--fe-surface, var(--bs-tertiary-bg, #f1f3f5));
+    font-size: 1.15rem;
   }
 
-  /* Navegação da competência */
-  .fe-competencia {
-    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
-    border: 1px solid var(--fe-border, #dee2e6);
-    border-radius: 14px;
-    padding: 14px 16px;
+  .fe-painel .fe-boas-vindas {
+    padding: 8px 2px 12px;
   }
 
-  .fe-competencia-select {
-    min-width: 130px;
-    border-color: var(--fe-border, #dee2e6);
-    background-color: var(--fe-surface, var(--bs-body-bg, #ffffff));
-    color: var(--fe-text, var(--bs-body-color, inherit));
+  .fe-painel .fe-boas-vindas h1 {
+    font-size: clamp(1.4rem, 3vw, 1.85rem);
+    letter-spacing: -.045em;
+  }
+
+  /* Competência */
+
+  .fe-painel .fe-competencia {
+    padding: 19px 22px;
+    background: var(--fe-surface, var(--bs-body-bg, #fff));
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .025);
+  }
+
+  .fe-painel .fe-competencia-select {
+    min-width: 125px;
     font-weight: 600;
+    border-radius: 10px;
+    border-color: var(--fe-border, var(--bs-border-color, #dee2e6));
+    background-color: var(--fe-surface, var(--bs-body-bg, #fff));
+    color: var(--fe-text, var(--bs-body-color, inherit));
   }
 
-  .fe-competencia-ano {
-    min-width: 92px;
+  .fe-painel .fe-competencia-ano {
+    min-width: 94px;
   }
 
-  .fe-indicador-card {
-    transition: transform .2s ease, box-shadow .2s ease;
+  .fe-painel .fe-navegacao-mes {
+    width: 39px;
+    height: 39px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    border-radius: 10px;
   }
 
-  .fe-indicador-card[role="button"]:hover {
-    transform: translateY(-2px);
-  }
-
-  .fe-competencia-legenda {
-    font-size: .78rem;
+  .fe-painel .fe-competencia-legenda {
+    font-size: .82rem;
     color: var(--fe-text, var(--bs-secondary-color, #6c757d));
   }
 
+  /* Indicadores */
+
+  .fe-painel .fe-resumo-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 174px;
+    padding: 20px;
+    background: var(--fe-surface, var(--bs-body-bg, #fff));
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .025);
+    transition: transform .18s ease, box-shadow .18s ease,
+                border-color .18s ease;
+  }
+
+  .fe-painel .fe-resumo-card[role="button"] {
+    cursor: pointer;
+  }
+
+  .fe-painel .fe-resumo-card[role="button"]:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 9px 22px rgba(0, 0, 0, .065);
+    border-color: var(--bs-primary-border-subtle, #b6d4fe);
+  }
+
+  .fe-painel .fe-resumo-icone {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 13px;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .fe-painel .fe-resumo-icone.receitas {
+    color: #198754;
+    background: rgba(25, 135, 84, .11);
+  }
+
+  .fe-painel .fe-resumo-icone.despesas {
+    color: #dc3545;
+    background: rgba(220, 53, 69, .10);
+  }
+
+  .fe-painel .fe-resumo-icone.saldo {
+    color: var(--bs-primary, #0d6efd);
+    background: var(--bs-primary-bg-subtle, rgba(13, 110, 253, .10));
+  }
+
+  .fe-painel .fe-resumo-rotulo {
+    color: var(--fe-text, var(--bs-secondary-color, #6c757d));
+    font-size: .82rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .fe-painel .fe-resumo-valor {
+    font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+    font-weight: 800;
+    letter-spacing: -.045em;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+  }
+
+  .fe-painel .fe-resumo-link {
+    margin-top: auto;
+    padding-top: 15px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--bs-primary, #0d6efd);
+  }
+
+  /* Saldo e reserva segura */
+
+  .fe-painel .fe-saldo-destaque {
+    position: relative;
+    height: 100%;
+    min-height: 208px;
+    padding: 24px;
+    overflow: hidden;
+    border-radius: var(--fe-painel-radius);
+    color: #fff;
+    background: linear-gradient(135deg, #176b50 0%, #124f40 100%);
+    box-shadow: 0 7px 22px rgba(23, 107, 80, .14);
+  }
+
+  .fe-painel .fe-saldo-destaque.negativo {
+    background: linear-gradient(135deg, #8c3542 0%, #642b39 100%);
+    box-shadow: 0 7px 22px rgba(140, 53, 66, .12);
+  }
+
+  .fe-painel .fe-saldo-rotulo {
+    color: rgba(255, 255, 255, .82);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+
+  .fe-painel .fe-saldo-valor {
+    font-size: clamp(1.65rem, 3.3vw, 2.25rem);
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -.05em;
+    overflow-wrap: anywhere;
+  }
+
+  .fe-painel .fe-saldo-descricao {
+    max-width: 430px;
+    font-size: .8rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, .78);
+  }
+
+  .fe-painel .fe-saldo-decoracao {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 3.1rem;
+    opacity: .13;
+    pointer-events: none;
+  }
+
+  .fe-painel .fe-sobra-segura {
+    height: 100%;
+    padding: 22px;
+    border: 1px solid rgba(25, 135, 84, .22);
+    border-radius: var(--fe-painel-radius);
+    background: var(--fe-surface, var(--bs-body-bg, #fff));
+  }
+
+  .fe-painel .fe-sobra-segura.negativa {
+    border-color: rgba(220, 53, 69, .32);
+  }
+
+  .fe-painel .fe-sobra-valor {
+    font-size: clamp(1.45rem, 2.5vw, 1.9rem);
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    overflow-wrap: anywhere;
+  }
+
+  .fe-painel .fe-sobra-icone {
+    width: 43px;
+    height: 43px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 13px;
+    background: rgba(25, 135, 84, .11);
+    color: #198754;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  .fe-painel .fe-sobra-segura.negativa .fe-sobra-icone {
+    background: rgba(220, 53, 69, .10);
+    color: #dc3545;
+  }
+
+  /* Avisos */
+
+  .fe-painel .fe-aviso-grupo-titulo {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    font-size: .9rem;
+    font-weight: 750;
+    margin-bottom: 14px;
+  }
+
+  .fe-painel .fe-aviso-item {
+    padding: 17px;
+    height: 100%;
+    background: var(--fe-surface, var(--bs-body-bg, #fff));
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    transition: border-color .18s ease, box-shadow .18s ease;
+  }
+
+  .fe-painel .fe-aviso-item:hover {
+    border-color: var(--bs-primary-border-subtle, #b6d4fe);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, .035);
+  }
+
+  .fe-painel .fe-aviso-item p:last-child {
+    margin-bottom: 0;
+  }
+
+  .fe-painel .fe-aviso-data {
+    color: var(--fe-text, var(--bs-secondary-color, #6c757d));
+    font-size: .82rem;
+  }
+
+  .fe-painel .fe-aviso-acao {
+    margin-top: 14px;
+  }
+
+  .fe-painel .fe-aviso-vazio {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 13px;
+    background: var(--fe-surface, var(--bs-tertiary-bg, #f1f3f5));
+  }
+
+  .fe-painel .fe-aviso-vazio-icone {
+    font-size: 1.35rem;
+    flex-shrink: 0;
+  }
+
+  .fe-painel .fe-aviso-vazio p {
+    font-size: .85rem;
+    margin-bottom: 0;
+  }
+
+  /* Categorias */
+
+  .fe-painel .fe-categoria-item {
+    padding: 13px 0;
+    border-bottom: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+  }
+
+  .fe-painel .fe-categoria-item:first-child {
+    padding-top: 0;
+  }
+
+  .fe-painel .fe-categoria-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .fe-painel .fe-categoria-nome {
+    font-size: .86rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  .fe-painel .fe-categoria-valor {
+    font-size: .85rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .fe-painel .fe-progress {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: var(--fe-border, var(--bs-border-color, #e9ecef));
+  }
+
+  .fe-painel .fe-progress-bar {
+    height: 100%;
+    min-width: 0;
+    border-radius: inherit;
+    background: var(--bs-primary, #0d6efd);
+    transition: width .35s ease;
+  }
+
+  /* Objetivos */
+
+  .fe-painel .fe-objetivo-total {
+    padding: 18px;
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    border-radius: 15px;
+    background: var(--fe-surface, var(--bs-tertiary-bg, #f8f9fa));
+  }
+
+  .fe-painel .fe-objetivo-card {
+    height: 100%;
+    padding: 19px;
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    background: var(--fe-surface, var(--bs-body-bg, #fff));
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .fe-painel .fe-objetivo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .045);
+  }
+
+  .fe-painel .fe-objetivo-icone {
+    width: 43px;
+    height: 43px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 13px;
+    background: rgba(25, 135, 84, .11);
+    color: #198754;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+
+  .fe-painel .fe-objetivo-nome {
+    font-size: .95rem;
+    font-weight: 750;
+    overflow-wrap: anywhere;
+  }
+
+  .fe-painel .fe-objetivo-valores {
+    font-size: .88rem;
+    line-height: 1.7;
+  }
+
+  .fe-painel .fe-btn-objetivo {
+    white-space: nowrap;
+  }
+
+  .fe-painel .fe-privado {
+    overflow-wrap: anywhere;
+  }
+
+  /* Modal */
+
+  .fe-painel .modal-content {
+    border: 1px solid var(--fe-border, var(--bs-border-color, #dee2e6));
+    border-radius: 17px;
+    overflow: hidden;
+  }
+
+  .fe-painel .modal-header {
+    padding: 18px 20px;
+  }
+
+  .fe-painel .modal-body .table {
+    font-size: .875rem;
+  }
+
+  /* Responsividade */
+
+  @media (min-width: 1200px) {
+    .fe-painel .fe-resumo-card {
+      padding: 22px;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .fe-painel {
+      --fe-painel-radius: 15px;
+    }
+
+    .fe-painel .fe-card {
+      padding: 17px;
+    }
+
+    .fe-painel .fe-competencia {
+      padding: 16px;
+    }
+
+    .fe-painel .fe-resumo-card {
+      min-height: 150px;
+      padding: 16px;
+    }
+
+    .fe-painel .fe-saldo-destaque,
+    .fe-painel .fe-sobra-segura {
+      padding: 20px;
+    }
+
+    .fe-painel .fe-aviso-item,
+    .fe-painel .fe-objetivo-card {
+      padding: 15px;
+    }
+  }
+
   @media (max-width: 575.98px) {
-    .fe-competencia {
-      padding: 12px;
+    .fe-painel .fe-competencia-form {
+      display: grid !important;
+      grid-template-columns: 39px minmax(0, 1fr) minmax(82px, .7fr) 39px;
+      width: 100%;
+      gap: 6px !important;
     }
 
-    .fe-competencia-select {
+    .fe-painel .fe-competencia-select,
+    .fe-painel .fe-competencia-ano {
       min-width: 0;
-      flex: 1;
+      width: 100%;
+      padding-left: 8px;
+      padding-right: 22px;
+      font-size: .86rem;
     }
 
-    .fe-competencia-ano {
-      max-width: 100px;
+    .fe-painel .fe-navegacao-mes {
+      width: 39px;
+    }
+
+    .fe-painel .fe-boas-vindas {
+      padding-top: 3px;
+    }
+
+    .fe-painel .fe-resumo-valor {
+      font-size: 1.35rem;
+    }
+
+    .fe-painel .fe-resumo-rotulo {
+      font-size: .78rem;
+    }
+
+    .fe-painel .fe-resumo-icone {
+      width: 36px;
+      height: 36px;
+      font-size: 1.05rem;
+    }
+
+    .fe-painel .fe-resumo-card {
+      min-height: 153px;
+      padding: 14px;
+    }
+
+    .fe-painel .fe-resumo-link {
+      font-size: .73rem;
+    }
+
+    .fe-painel .fe-saldo-decoracao {
+      right: 14px;
+      top: 14px;
+      font-size: 2.3rem;
+    }
+
+    .fe-painel .fe-objetivo-total {
+      padding: 14px;
+    }
+
+    .fe-painel .fe-btn-objetivo {
+      white-space: normal;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fe-painel *,
+    .fe-painel *::before,
+    .fe-painel *::after {
+      transition: none !important;
+      animation: none !important;
     }
   }
 </style>
 
-<!-- Boas-vindas -->
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-  <div>
-    <h1 class="h4 fw-bold mb-1">Olá, {{ user.primeiro_nome }} 👋</h1>
-    <p class="text-muted small mb-0">
-      Acompanhe sua vida financeira por competência.
-    </p>
-  </div>
-</div>
+<div class="fe-painel">
 
-<!-- Navegação por mês e ano -->
-<div class="fe-competencia mb-3">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <!-- Cabeçalho -->
+  <div class="fe-boas-vindas d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
     <div>
-      <p class="fw-semibold mb-1">
-        <i class="bi bi-calendar3 text-primary me-1"></i>
-        Competência do painel
-      </p>
-      <p class="fe-competencia-legenda mb-0">
-        Selecione o mês para consultar receitas e despesas.
+      <h1 class="fw-bold mb-1">Olá, {{ user.primeiro_nome }} 👋</h1>
+      <p class="text-muted mb-0">
+        Seu resumo financeiro, organizado em um só lugar.
       </p>
     </div>
-
-    <form method="get" action="{% url 'dashboard:painel' %}"
-          class="d-flex align-items-center gap-2 ms-auto">
-      <a
-        href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 1 %}12{% else %}{{ mes_selecionado|add:'-1' }}{% endif %}&ano={% if mes_selecionado == 1 %}{{ ano_selecionado|add:'-1' }}{% else %}{{ ano_selecionado }}{% endif %}"
-        class="btn btn-outline-secondary"
-        aria-label="Mês anterior"
-        title="Mês anterior">
-        <i class="bi bi-chevron-left"></i>
-      </a>
-
-      <select
-        name="mes"
-        class="form-select fe-competencia-select"
-        aria-label="Selecionar mês"
-        onchange="this.form.submit()">
-        {% for mes in meses_disponiveis %}
-          <option value="{{ mes.numero }}"
-            {% if mes.numero == mes_selecionado %}selected{% endif %}>
-            {{ mes.nome }}
-          </option>
-        {% endfor %}
-      </select>
-
-      <select
-        name="ano"
-        class="form-select fe-competencia-select fe-competencia-ano"
-        aria-label="Selecionar ano"
-        onchange="this.form.submit()">
-        {% for ano in anos_disponiveis %}
-          <option value="{{ ano }}"
-            {% if ano == ano_selecionado %}selected{% endif %}>
-            {{ ano }}
-          </option>
-        {% endfor %}
-      </select>
-
-      <a
-        href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 12 %}1{% else %}{{ mes_selecionado|add:'1' }}{% endif %}&ano={% if mes_selecionado == 12 %}{{ ano_selecionado|add:'1' }}{% else %}{{ ano_selecionado }}{% endif %}"
-        class="btn btn-outline-secondary"
-        aria-label="Próximo mês"
-        title="Próximo mês">
-        <i class="bi bi-chevron-right"></i>
-      </a>
-    </form>
   </div>
 
-  <div class="mt-3">
-    <span class="badge rounded-pill bg-primary-subtle text-primary">
-      <i class="bi bi-calendar-check me-1"></i>
-      {{ mes_referencia|date:"F/Y"|capfirst }}
-    </span>
-  </div>
-</div>
-
-<!-- Resumo financeiro -->
-<div class="row g-3 mb-3">
-  <div class="col-12 col-md-4">
-    <div
-      class="fe-card fe-indicador-card h-100"
-      data-bs-toggle="modal"
-      data-bs-target="#modalReceitas"
-      role="button"
-      tabindex="0"
-      aria-label="Ver detalhes das receitas da competência selecionada"
-      onclick=""
-      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalReceitas')).show();}">
-      <p class="text-muted small mb-1">
-        <i class="bi bi-arrow-down-circle text-success me-1"></i>
-        Receitas do mês
-      </p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-        {{ total_receitas|brl }}
-      </p>
-      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">
-        Ver detalhes de {{ mes_referencia|date:"F/Y"|capfirst }} →
-      </small>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div
-      class="fe-card fe-indicador-card h-100"
-      data-bs-toggle="modal"
-      data-bs-target="#modalDespesas"
-      role="button"
-      tabindex="0"
-      aria-label="Ver detalhes das despesas da competência selecionada"
-      onclick=""
-      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDespesas')).show();}">
-      <p class="text-muted small mb-1">
-        <i class="bi bi-arrow-up-circle text-danger me-1"></i>
-        Despesas realizadas
-      </p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-        {{ total_despesas|brl }}
-      </p>
-      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">
-        Ver detalhes de {{ mes_referencia|date:"F/Y"|capfirst }} →
-      </small>
-    </div>
-  </div>
-
-  <div class="col-12 col-md-4">
-    <div class="fe-card fe-indicador-card h-100">
-      <p class="text-muted small mb-1">
-        <i class="bi bi-wallet2 me-1"></i>
-        Saldo disponível acumulado
-      </p>
-      <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-        {{ saldo_disponivel|brl }}
-      </p>
-      <small class="text-muted d-block mt-2" style="font-size: 0.75rem;">
-        Resultado histórico dos lançamentos confirmados.
-      </small>
-    </div>
-  </div>
-</div>
-
-<!-- Quanto sobra com segurança -->
-<div class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %} mb-3">
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div>
-      <p class="mb-1 fw-semibold">
-        <i class="bi bi-shield-check me-1"></i>
-        Quanto sobra com segurança
-      </p>
-      <p class="fe-valor-grande mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-        {{ sobra_segura|brl }}
-      </p>
-      <p class="small mb-0 mt-1 opacity-75">
-        Saldo disponível menos as contas e parcelas que vencem nos próximos 7 dias.
-      </p>
-    </div>
-    <i class="bi bi-piggy-bank" style="font-size: 2.5rem; opacity: 0.35;"></i>
-  </div>
-</div>
-
-<!-- Central de Avisos -->
-<div class="fe-card mb-3">
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <div>
-      <p class="fw-semibold mb-1">
-        <i class="bi bi-bell me-1"></i>Central de Avisos
-      </p>
-      <p class="small text-muted mb-0">
-        Acompanhe suas contas recorrentes e parcelas de dívidas.
-      </p>
-    </div>
-
-    <span class="badge rounded-pill bg-primary-subtle text-primary">
-      {{ total_avisos }} pendência{{ total_avisos|pluralize:"s" }}
-    </span>
-  </div>
-
-  <!-- Contas e parcelas vencidas -->
-  <div class="mb-4">
-    <div class="d-flex align-items-center gap-2 mb-3">
-      <i class="bi bi-exclamation-circle-fill text-danger"></i>
-      <h2 class="h6 fw-bold mb-0">Vencidas</h2>
-      <span class="badge bg-danger">{{ total_vencidos }}</span>
-    </div>
-
-    {% if avisos_vencidos %}
-      <div class="row g-3">
-        {% for item in avisos_vencidos %}
-          <div class="col-12 col-md-6 col-xl-4">
-            <div class="fe-aviso-item">
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                <span class="small text-muted">
-                  {% if item.tipo == "divida" %}
-                    <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
-                  {% elif item.periodicidade == "anual" %}
-                    <i class="bi bi-calendar-event me-1"></i>Conta anual
-                  {% else %}
-                    <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
-                  {% endif %}
-                </span>
-                <span class="badge bg-danger">Vencida</span>
-              </div>
-
-              <p class="fw-semibold mb-1">{{ item.nome }}</p>
-
-              <p class="h5 fw-bold mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
-                {{ item.valor|brl }}
-              </p>
-
-              <p class="fe-aviso-data mb-1">
-                <i class="bi bi-calendar3 me-1"></i>
-                Vencimento: {{ item.vencimento|date:"d/m/Y" }}
-              </p>
-
-              {% if item.categoria %}
-                <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
-              {% endif %}
-
-              {% if item.tipo == "conta" and item.pagamento %}
-                <form method="post"
-                      action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
-                      class="fe-aviso-acao">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-success btn-sm w-100">
-                    <i class="bi bi-check-circle me-1"></i>Marcar como pago
-                  </button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
-        <i class="bi bi-check-circle text-success fs-4"></i>
-        <p class="small text-muted mb-0 mt-2">
-          Nenhuma conta ou parcela vencida registrada. 🌿
-        </p>
-      </div>
-    {% endif %}
-  </div>
-
-  <hr class="my-4">
-
-  <!-- Contas e parcelas a vencer -->
-  <div>
-    <div class="d-flex align-items-center gap-2 mb-3">
-      <i class="bi bi-calendar-check text-warning"></i>
-      <h2 class="h6 fw-bold mb-0">A vencer nos próximos 7 dias</h2>
-      <span class="badge bg-warning text-dark">{{ total_a_vencer }}</span>
-    </div>
-
-    {% if avisos_a_vencer %}
-      <div class="row g-3">
-        {% for item in avisos_a_vencer %}
-          <div class="col-12 col-md-6 col-xl-4">
-            <div class="fe-aviso-item">
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                <span class="small text-muted">
-                  {% if item.tipo == "divida" %}
-                    <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
-                  {% elif item.periodicidade == "anual" %}
-                    <i class="bi bi-calendar-event me-1"></i>Conta anual
-                  {% else %}
-                    <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
-                  {% endif %}
-                </span>
-
-                {% if item.vencimento|dias_ate == "vence hoje" %}
-                  <span class="badge bg-danger">Vence hoje</span>
-                {% else %}
-                  <span class="badge bg-warning text-dark">
-                    {{ item.vencimento|dias_ate }}
-                  </span>
-                {% endif %}
-              </div>
-
-              <p class="fw-semibold mb-1">{{ item.nome }}</p>
-
-              <p class="h5 fw-bold mb-2 {% if privacy_mode_on %}fe-privado{% endif %}">
-                {{ item.valor|brl }}
-              </p>
-
-              <p class="fe-aviso-data mb-1">
-                <i class="bi bi-calendar3 me-1"></i>
-                Vencimento: {{ item.vencimento|date:"d/m/Y" }}
-              </p>
-
-              {% if item.categoria %}
-                <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
-              {% endif %}
-
-              {% if item.tipo == "conta" and item.pagamento %}
-                <form method="post"
-                      action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
-                      class="fe-aviso-acao">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-success btn-sm w-100">
-                    <i class="bi bi-check-circle me-1"></i>Marcar como pago
-                  </button>
-                </form>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
-        <i class="bi bi-calendar-check text-success fs-4"></i>
-        <p class="small text-muted mb-0 mt-2">
-          Nenhuma conta ou parcela vencendo nos próximos 7 dias.
-        </p>
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Categorias de despesas -->
-<div class="row g-3">
-  <div class="col-12">
-    <div class="fe-card h-100">
-      <p class="fw-semibold mb-1">
-        <i class="bi bi-bar-chart-line me-1"></i>
-        Onde seu dinheiro foi
-      </p>
-      <p class="small text-muted mb-3">
-        Principais despesas de {{ mes_referencia|date:"F/Y"|capfirst }}.
-      </p>
-
-      {% if top_categorias %}
-        {% for cat in top_categorias %}
-          <div class="mb-3">
-            <div class="d-flex justify-content-between small mb-1">
-              <span>
-                <i class="bi {{ cat.categoria__icone }} me-1"
-                   style="color: {{ cat.categoria__cor }};"></i>
-                {{ cat.categoria__nome|default:"Sem categoria" }}
-              </span>
-              <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
-                {{ cat.total|brl }}
-              </span>
-            </div>
-            <div class="fe-progress">
-              <div class="fe-progress-bar"
-                   style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
-            </div>
-          </div>
-        {% endfor %}
-      {% else %}
-        <p class="text-muted small mb-0">
-          Nenhuma despesa confirmada em {{ mes_referencia|date:"F/Y"|capfirst }}.
-        </p>
-      {% endif %}
-    </div>
-  </div>
-</div>
-
-<!-- Meus objetivos -->
-<div class="fe-card mt-3">
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <div>
-      <p class="fw-semibold mb-1">
-        <i class="bi bi-bullseye me-1"></i>Meus objetivos
-      </p>
-      <p class="small text-muted mb-0">
-        Acompanhe o que você já guardou para cada objetivo.
-      </p>
-    </div>
-
-    <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary">
-      <i class="bi bi-plus-circle me-1"></i>Gerenciar objetivos
-    </a>
-  </div>
-
-  <div class="border rounded-3 p-3 mb-3"
-       style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
-    <div class="d-flex align-items-center gap-3">
-      <div class="rounded-circle d-flex align-items-center justify-content-center"
-           style="width: 48px; height: 48px; background: rgba(25, 135, 84, 0.12); flex-shrink: 0;">
-        <i class="bi bi-piggy-bank text-success" style="font-size: 1.5rem;"></i>
-      </div>
+  <!-- Seleção de competência -->
+  <section class="fe-competencia mb-4" aria-label="Competência do painel">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
       <div>
-        <p class="small text-muted mb-1">Total acumulado em todos os objetivos</p>
-        <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-          {{ total_acumulado_objetivos|brl }}
+        <p class="fw-bold mb-1">
+          <i class="bi bi-calendar3 text-primary me-2"></i>
+          Competência do painel
         </p>
+        <p class="fe-competencia-legenda mb-0">
+          Consulte suas receitas e despesas por mês.
+        </p>
+      </div>
+
+      <form method="get"
+            action="{% url 'dashboard:painel' %}"
+            class="fe-competencia-form d-flex align-items-center gap-2 ms-auto">
+
+        <a
+          href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 1 %}12{% else %}{{ mes_selecionado|add:'-1' }}{% endif %}&ano={% if mes_selecionado == 1 %}{{ ano_selecionado|add:'-1' }}{% else %}{{ ano_selecionado }}{% endif %}"
+          class="btn btn-outline-secondary fe-navegacao-mes"
+          aria-label="Mês anterior"
+          title="Mês anterior">
+          <i class="bi bi-chevron-left"></i>
+        </a>
+
+        <select
+          name="mes"
+          class="form-select fe-competencia-select"
+          aria-label="Selecionar mês"
+          onchange="this.form.submit()">
+          {% for mes in meses_disponiveis %}
+            <option value="{{ mes.numero }}"
+              {% if mes.numero == mes_selecionado %}selected{% endif %}>
+              {{ mes.nome }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <select
+          name="ano"
+          class="form-select fe-competencia-select fe-competencia-ano"
+          aria-label="Selecionar ano"
+          onchange="this.form.submit()">
+          {% for ano in anos_disponiveis %}
+            <option value="{{ ano }}"
+              {% if ano == ano_selecionado %}selected{% endif %}>
+              {{ ano }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <a
+          href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 12 %}1{% else %}{{ mes_selecionado|add:'1' }}{% endif %}&ano={% if mes_selecionado == 12 %}{{ ano_selecionado|add:'1' }}{% else %}{{ ano_selecionado }}{% endif %}"
+          class="btn btn-outline-secondary fe-navegacao-mes"
+          aria-label="Próximo mês"
+          title="Próximo mês">
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </form>
+    </div>
+
+    <div class="mt-3">
+      <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+        <i class="bi bi-calendar-check me-1"></i>
+        {{ mes_referencia|date:"F/Y"|capfirst }}
+      </span>
+    </div>
+  </section>
+
+  <!-- Indicadores financeiros -->
+  <div class="row g-3 mb-3">
+
+    <div class="col-12 col-md-6 col-xl-4">
+      <div
+        class="fe-resumo-card h-100"
+        data-bs-toggle="modal"
+        data-bs-target="#modalReceitas"
+        role="button"
+        tabindex="0"
+        aria-label="Ver detalhes das receitas da competência selecionada"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalReceitas')).show();}">
+
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="fe-resumo-icone receitas">
+            <i class="bi bi-arrow-down-left"></i>
+          </span>
+          <span class="fe-resumo-rotulo">Receitas do mês</span>
+        </div>
+
+        <div class="fe-resumo-valor {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ total_receitas|brl }}
+        </div>
+
+        <div class="fe-resumo-link">
+          Ver detalhes <i class="bi bi-arrow-up-right ms-1"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+      <div
+        class="fe-resumo-card h-100"
+        data-bs-toggle="modal"
+        data-bs-target="#modalDespesas"
+        role="button"
+        tabindex="0"
+        aria-label="Ver detalhes das despesas da competência selecionada"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDespesas')).show();}">
+
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="fe-resumo-icone despesas">
+            <i class="bi bi-arrow-up-right"></i>
+          </span>
+          <span class="fe-resumo-rotulo">Despesas realizadas</span>
+        </div>
+
+        <div class="fe-resumo-valor {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ total_despesas|brl }}
+        </div>
+
+        <div class="fe-resumo-link">
+          Ver detalhes <i class="bi bi-arrow-up-right ms-1"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="fe-resumo-card h-100">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="fe-resumo-icone saldo">
+            <i class="bi bi-wallet2"></i>
+          </span>
+          <span class="fe-resumo-rotulo">Saldo disponível acumulado</span>
+        </div>
+
+        <div class="fe-resumo-valor {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ saldo_disponivel|brl }}
+        </div>
+
+        <div class="text-muted mt-auto pt-3" style="font-size:.78rem;">
+          Resultado histórico dos lançamentos confirmados.
+        </div>
       </div>
     </div>
   </div>
 
-  {% if objetivos %}
-    <div class="row g-3">
-      {% for objetivo in objetivos|slice:":4" %}
-        <div class="col-12 col-md-6">
-          <div class="border rounded-3 p-3 h-100"
-               style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
-            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-              <div>
-                <p class="fw-semibold mb-1">
-                  {% if objetivo.is_colchao_padrao %}
-                    <i class="bi bi-umbrella me-1"></i>
-                  {% else %}
-                    <i class="bi bi-bullseye me-1"></i>
-                  {% endif %}
-                  {{ objetivo.nome }}
+  <!-- Saldo e sobra segura -->
+  <div class="row g-3 mb-4">
+
+    <div class="col-12 col-lg-6">
+      <section class="fe-saldo-destaque {% if saldo_disponivel < 0 %}negativo{% endif %}">
+        <i class="bi bi-wallet2 fe-saldo-decoracao"></i>
+
+        <p class="fe-saldo-rotulo mb-3">
+          <i class="bi bi-graph-up-arrow me-2"></i>
+          Saldo disponível acumulado
+        </p>
+
+        <div class="fe-saldo-valor mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ saldo_disponivel|brl }}
+        </div>
+
+        <p class="fe-saldo-descricao mb-0">
+          {% if saldo_disponivel < 0 %}
+            Seu saldo está negativo. Confira seus lançamentos e planeje os próximos pagamentos.
+          {% else %}
+            Acompanhe o resultado acumulado dos seus lançamentos confirmados.
+          {% endif %}
+        </p>
+      </section>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <section class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %}">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <p class="fw-bold mb-1">Quanto sobra com segurança</p>
+            <p class="text-muted small mb-0">
+              Considerando os próximos 7 dias.
+            </p>
+          </div>
+          <span class="fe-sobra-icone">
+            <i class="bi bi-shield-check"></i>
+          </span>
+        </div>
+
+        <div class="fe-sobra-valor {% if privacy_mode_on %}fe-privado{% endif %}">
+          {{ sobra_segura|brl }}
+        </div>
+
+        <p class="text-muted small mt-3 mb-0" style="line-height:1.6;">
+          Saldo disponível menos as contas e parcelas que vencem nos próximos 7 dias.
+        </p>
+
+        {% if sobra_segura < 0 %}
+          <div class="small text-danger fw-semibold mt-3">
+            <i class="bi bi-exclamation-circle me-1"></i>
+            Atenção: suas obrigações previstas superam o saldo disponível.
+          </div>
+        {% endif %}
+      </section>
+    </div>
+
+  </div>
+
+  <!-- Central de avisos -->
+  <section class="fe-card mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <span class="fe-icone-secao">
+          <i class="bi bi-bell"></i>
+        </span>
+        <div>
+          <h2 class="fe-secao-titulo">Central de Avisos</h2>
+          <p class="fe-secao-descricao">
+            Contas recorrentes e parcelas de dívidas.
+          </p>
+        </div>
+      </div>
+
+      <span class="badge rounded-pill bg-primary-subtle text-primary px-3 py-2">
+        {{ total_avisos }} pendência{{ total_avisos|pluralize:"s" }}
+      </span>
+    </div>
+
+    <!-- Vencidas -->
+    <div class="mb-4">
+      <div class="fe-aviso-grupo-titulo">
+        <i class="bi bi-exclamation-circle-fill text-danger"></i>
+        <h3 class="h6 fw-bold mb-0">Vencidas</h3>
+        <span class="badge rounded-pill bg-danger">{{ total_vencidos }}</span>
+      </div>
+
+      {% if avisos_vencidos %}
+        <div class="row g-3">
+          {% for item in avisos_vencidos %}
+            <div class="col-12 col-md-6 col-xl-4">
+              <div class="fe-aviso-item">
+
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                  <span class="small text-muted">
+                    {% if item.tipo == "divida" %}
+                      <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
+                    {% elif item.periodicidade == "anual" %}
+                      <i class="bi bi-calendar-event me-1"></i>Conta anual
+                    {% else %}
+                      <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
+                    {% endif %}
+                  </span>
+                  <span class="badge bg-danger">Vencida</span>
+                </div>
+
+                <p class="fw-bold mb-2">{{ item.nome }}</p>
+
+                <p class="h5 fw-bold mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
+                  {{ item.valor|brl }}
                 </p>
 
-                {% if objetivo.is_colchao_padrao %}
-                  <span class="badge bg-success-subtle text-success">Reserva de segurança</span>
+                <p class="fe-aviso-data mb-2">
+                  <i class="bi bi-calendar3 me-1"></i>
+                  Vencimento: {{ item.vencimento|date:"d/m/Y" }}
+                </p>
+
+                {% if item.categoria %}
+                  <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
                 {% endif %}
+
+                {% if item.tipo == "conta" and item.pagamento %}
+                  <form method="post"
+                        action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
+                        class="fe-aviso-acao">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                      <i class="bi bi-check-circle me-1"></i>Marcar como pago
+                    </button>
+                  </form>
+                {% endif %}
+
               </div>
-              <span class="small fw-semibold text-nowrap">{{ objetivo.percentual_concluido }}%</span>
             </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="fe-aviso-vazio">
+          <i class="bi bi-check-circle-fill text-success fe-aviso-vazio-icone"></i>
+          <div>
+            <p class="fw-semibold mb-1">Tudo em dia por aqui!</p>
+            <p class="text-muted">Nenhuma conta ou parcela vencida registrada.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
 
-            <div class="mb-2">
-              <p class="mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
-                <span class="fw-bold">{{ objetivo.valor_acumulado|brl }}</span>
-                <span class="small text-muted">de {{ objetivo.valor_alvo|brl }}</span>
-              </p>
-            </div>
+    <hr class="my-4">
 
-            <div class="fe-progress mb-2"
-                 role="progressbar"
-                 aria-label="Progresso de {{ objetivo.nome }}"
-                 aria-valuenow="{{ objetivo.percentual_concluido }}"
-                 aria-valuemin="0"
-                 aria-valuemax="100">
-              <div class="fe-progress-bar"
-                   style="width: {{ objetivo.percentual_concluido }}%;"></div>
-            </div>
+    <!-- A vencer -->
+    <div>
+      <div class="fe-aviso-grupo-titulo">
+        <i class="bi bi-calendar-check text-warning"></i>
+        <h3 class="h6 fw-bold mb-0">A vencer nos próximos 7 dias</h3>
+        <span class="badge rounded-pill bg-warning text-dark">{{ total_a_vencer }}</span>
+      </div>
 
-            {% if objetivo.percentual_concluido >= 100 %}
-              <p class="small text-success mb-0">
-                <i class="bi bi-check-circle-fill me-1"></i>Objetivo alcançado!
-              </p>
-            {% else %}
-              <p class="small text-muted mb-0">
-                {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
-                  Faltam
-                  <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
-                    {{ objetivo.valor_restante|brl }}
+      {% if avisos_a_vencer %}
+        <div class="row g-3">
+          {% for item in avisos_a_vencer %}
+            <div class="col-12 col-md-6 col-xl-4">
+              <div class="fe-aviso-item">
+
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                  <span class="small text-muted">
+                    {% if item.tipo == "divida" %}
+                      <i class="bi bi-credit-card-2-front me-1"></i>Parcela de dívida
+                    {% elif item.periodicidade == "anual" %}
+                      <i class="bi bi-calendar-event me-1"></i>Conta anual
+                    {% else %}
+                      <i class="bi bi-arrow-repeat me-1"></i>Conta mensal
+                    {% endif %}
                   </span>
-                  para atingir o objetivo.
-                {% else %}
-                  Objetivo concluído!
+
+                  {% if item.vencimento|dias_ate == "vence hoje" %}
+                    <span class="badge bg-danger">Vence hoje</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">
+                      {{ item.vencimento|dias_ate }}
+                    </span>
+                  {% endif %}
+                </div>
+
+                <p class="fw-bold mb-2">{{ item.nome }}</p>
+
+                <p class="h5 fw-bold mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
+                  {{ item.valor|brl }}
+                </p>
+
+                <p class="fe-aviso-data mb-2">
+                  <i class="bi bi-calendar3 me-1"></i>
+                  Vencimento: {{ item.vencimento|date:"d/m/Y" }}
+                </p>
+
+                {% if item.categoria %}
+                  <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
                 {% endif %}
-              </p>
-            {% endif %}
+
+                {% if item.tipo == "conta" and item.pagamento %}
+                  <form method="post"
+                        action="{% url 'dashboard:marcar_conta_paga' item.pagamento.id %}"
+                        class="fe-aviso-acao">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm w-100">
+                      <i class="bi bi-check-circle me-1"></i>Marcar como pago
+                    </button>
+                  </form>
+                {% endif %}
+
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="fe-aviso-vazio">
+          <i class="bi bi-calendar-check text-success fe-aviso-vazio-icone"></i>
+          <div>
+            <p class="fw-semibold mb-1">Nenhum vencimento próximo</p>
+            <p class="text-muted">Nenhuma conta ou parcela vencendo nos próximos 7 dias.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Categorias de despesas -->
+  <section class="fe-card mb-4">
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <span class="fe-icone-secao">
+        <i class="bi bi-bar-chart-line"></i>
+      </span>
+      <div>
+        <h2 class="fe-secao-titulo">Onde seu dinheiro foi</h2>
+        <p class="fe-secao-descricao">
+          Principais despesas de {{ mes_referencia|date:"F/Y"|capfirst }}.
+        </p>
+      </div>
+    </div>
+
+    {% if top_categorias %}
+      {% for cat in top_categorias %}
+        <div class="fe-categoria-item">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+            <span class="fe-categoria-nome">
+              <i class="bi {{ cat.categoria__icone }} me-2"
+                 style="color: {{ cat.categoria__cor }};"></i>
+              {{ cat.categoria__nome|default:"Sem categoria" }}
+            </span>
+            <span class="fe-categoria-valor {% if privacy_mode_on %}fe-privado{% endif %}">
+              {{ cat.total|brl }}
+            </span>
+          </div>
+          <div class="fe-progress">
+            <div class="fe-progress-bar"
+                 style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
           </div>
         </div>
       {% endfor %}
+    {% else %}
+      <div class="fe-aviso-vazio">
+        <i class="bi bi-receipt text-muted fe-aviso-vazio-icone"></i>
+        <div>
+          <p class="fw-semibold mb-1">Nenhuma despesa nesta competência</p>
+          <p class="text-muted">
+            As categorias aparecerão aqui quando houver despesas confirmadas em
+            {{ mes_referencia|date:"F/Y"|capfirst }}.
+          </p>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Meus objetivos -->
+  <section class="fe-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <span class="fe-icone-secao">
+          <i class="bi bi-bullseye"></i>
+        </span>
+        <div>
+          <h2 class="fe-secao-titulo">Meus objetivos</h2>
+          <p class="fe-secao-descricao">
+            Acompanhe seu progresso e o que já guardou.
+          </p>
+        </div>
+      </div>
+
+      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary fe-btn-objetivo btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Gerenciar objetivos
+      </a>
     </div>
 
-    {% if objetivos|length > 4 %}
-      <div class="text-center mt-3">
-        <a href="{% url 'goals:lista' %}" class="btn btn-outline-primary btn-sm">
-          Ver todos os objetivos <i class="bi bi-arrow-right ms-1"></i>
+    <!-- Total acumulado -->
+    <div class="fe-objetivo-total mb-4">
+      <div class="d-flex align-items-center gap-3">
+        <span class="fe-objetivo-icone">
+          <i class="bi bi-piggy-bank"></i>
+        </span>
+        <div>
+          <p class="small text-muted mb-1">Total acumulado em todos os objetivos</p>
+          <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
+            {{ total_acumulado_objetivos|brl }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {% if objetivos %}
+      <div class="row g-3">
+        {% for objetivo in objetivos|slice:":4" %}
+          <div class="col-12 col-md-6">
+            <article class="fe-objetivo-card">
+
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div class="d-flex align-items-start gap-3">
+                  <span class="fe-objetivo-icone">
+                    {% if objetivo.is_colchao_padrao %}
+                      <i class="bi bi-umbrella"></i>
+                    {% else %}
+                      <i class="bi bi-bullseye"></i>
+                    {% endif %}
+                  </span>
+
+                  <div>
+                    <h3 class="fe-objetivo-nome mb-1">{{ objetivo.nome }}</h3>
+
+                    {% if objetivo.is_colchao_padrao %}
+                      <span class="badge bg-success-subtle text-success">
+                        Reserva de segurança
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <span class="small fw-bold text-nowrap">
+                  {{ objetivo.percentual_concluido }}%
+                </span>
+              </div>
+
+              <div class="fe-objetivo-valores mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
+                <span class="fw-bold">{{ objetivo.valor_acumulado|brl }}</span>
+                <span class="text-muted"> de {{ objetivo.valor_alvo|brl }}</span>
+              </div>
+
+              <div class="fe-progress mb-3"
+                   role="progressbar"
+                   aria-label="Progresso de {{ objetivo.nome }}"
+                   aria-valuenow="{{ objetivo.percentual_concluido }}"
+                   aria-valuemin="0"
+                   aria-valuemax="100">
+                <div class="fe-progress-bar"
+                     style="width: {{ objetivo.percentual_concluido }}%;"></div>
+              </div>
+
+              {% if objetivo.percentual_concluido >= 100 %}
+                <p class="small text-success fw-semibold mb-0">
+                  <i class="bi bi-check-circle-fill me-1"></i>
+                  Objetivo alcançado!
+                </p>
+              {% else %}
+                <p class="small text-muted mb-0">
+                  {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
+                    Faltam
+                    <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
+                      {{ objetivo.valor_restante|brl }}
+                    </span>
+                    para atingir o objetivo.
+                  {% else %}
+                    Objetivo concluído!
+                  {% endif %}
+                </p>
+              {% endif %}
+
+            </article>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if objetivos|length > 4 %}
+        <div class="text-center mt-4">
+          <a href="{% url 'goals:lista' %}" class="btn btn-outline-primary btn-sm">
+            Ver todos os objetivos
+            <i class="bi bi-arrow-right ms-1"></i>
+          </a>
+        </div>
+      {% endif %}
+
+    {% else %}
+      <div class="text-center py-4">
+        <span class="fe-icone-secao mx-auto mb-3" style="width:56px;height:56px;font-size:1.5rem;">
+          <i class="bi bi-bullseye"></i>
+        </span>
+        <h3 class="h6 fw-bold">Você ainda não tem objetivos cadastrados</h3>
+        <p class="small text-muted mb-3">
+          Crie seu primeiro objetivo e acompanhe seu progresso por aqui.
+        </p>
+        <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">
+          <i class="bi bi-plus-circle me-1"></i>
+          Criar meu primeiro objetivo
         </a>
       </div>
     {% endif %}
-  {% else %}
-    <div class="text-center py-4">
-      <i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
-      <p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
-      <p class="small text-muted mb-3">
-        Crie seu primeiro objetivo e acompanhe seu progresso por aqui.
-      </p>
-      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">
-        Criar meu primeiro objetivo
-      </a>
-    </div>
-  {% endif %}
-</div>
+  </section>
 
-<!-- Modal receitas -->
-<div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold">
-          <i class="bi bi-arrow-down-circle me-2"></i>
-          Receitas — {{ mes_referencia|date:"F/Y"|capfirst }}
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
+  <!-- Modal de receitas -->
+  <div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-arrow-down-circle me-2"></i>
+            Receitas — {{ mes_referencia|date:"F/Y"|capfirst }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white"
+                  data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
 
-      <div class="modal-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Data</th>
-                <th>Descrição</th>
-                <th>Categoria</th>
-                <th class="text-end">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in receitas_detalhes %}
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
                 <tr>
-                  <td>{{ item.data|date:"d/m/Y" }}</td>
-                  <td>{{ item.descricao|default:"—" }}</td>
-                  <td>
-                    {% if item.categoria %}
-                      <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
-                    {% else %}
-                      <span class="text-muted">Sem categoria</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-end text-success fw-bold">{{ item.valor|brl }}</td>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th class="text-end">Valor</th>
                 </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="4" class="text-center py-3 text-muted">
-                    Nenhuma receita registrada nesta competência.
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {% for item in receitas_detalhes %}
+                  <tr>
+                    <td>{{ item.data|date:"d/m/Y" }}</td>
+                    <td>{{ item.descricao|default:"—" }}</td>
+                    <td>
+                      {% if item.categoria %}
+                        <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
+                      {% else %}
+                        <span class="text-muted">Sem categoria</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end text-success fw-bold">
+                      <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
+                        {{ item.valor|brl }}
+                      </span>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      Nenhuma receita registrada nesta competência.
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Modal despesas -->
-<div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title fw-bold">
-          <i class="bi bi-arrow-up-circle me-2"></i>
-          Despesas — {{ mes_referencia|date:"F/Y"|capfirst }}
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-      </div>
+  <!-- Modal de despesas -->
+  <div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-arrow-up-circle me-2"></i>
+            Despesas — {{ mes_referencia|date:"F/Y"|capfirst }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white"
+                  data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
 
-      <div class="modal-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Data</th>
-                <th>Descrição</th>
-                <th>Categoria</th>
-                <th class="text-end">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in despesas_detalhes %}
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
                 <tr>
-                  <td>{{ item.data|date:"d/m/Y" }}</td>
-                  <td>{{ item.descricao|default:"—" }}</td>
-                  <td>
-                    {% if item.categoria %}
-                      <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
-                    {% else %}
-                      <span class="text-muted">Sem categoria</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-end text-danger fw-bold">{{ item.valor|brl }}</td>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th class="text-end">Valor</th>
                 </tr>
-              {% empty %}
-                <tr>
-                  <td colspan="4" class="text-center py-3 text-muted">
-                    Nenhuma despesa registrada nesta competência.
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {% for item in despesas_detalhes %}
+                  <tr>
+                    <td>{{ item.data|date:"d/m/Y" }}</td>
+                    <td>{{ item.descricao|default:"—" }}</td>
+                    <td>
+                      {% if item.categoria %}
+                        <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
+                      {% else %}
+                        <span class="text-muted">Sem categoria</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end text-danger fw-bold">
+                      <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
+                        {{ item.valor|brl }}
+                      </span>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                      Nenhuma despesa registrada nesta competência.
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
 </div>
 
 {% endblock %}
