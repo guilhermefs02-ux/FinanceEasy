@@ -95,77 +95,204 @@
   .fe-aviso-acao {
     margin-top: 14px;
   }
+
+  /* Navegação da competência */
+  .fe-competencia {
+    background: var(--fe-surface, var(--bs-body-bg, #ffffff));
+    border: 1px solid var(--fe-border, #dee2e6);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+
+  .fe-competencia-select {
+    min-width: 130px;
+    border-color: var(--fe-border, #dee2e6);
+    background-color: var(--fe-surface, var(--bs-body-bg, #ffffff));
+    color: var(--fe-text, var(--bs-body-color, inherit));
+    font-weight: 600;
+  }
+
+  .fe-competencia-ano {
+    min-width: 92px;
+  }
+
+  .fe-indicador-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .fe-indicador-card[role="button"]:hover {
+    transform: translateY(-2px);
+  }
+
+  .fe-competencia-legenda {
+    font-size: .78rem;
+    color: var(--fe-text, var(--bs-secondary-color, #6c757d));
+  }
+
+  @media (max-width: 575.98px) {
+    .fe-competencia {
+      padding: 12px;
+    }
+
+    .fe-competencia-select {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .fe-competencia-ano {
+      max-width: 100px;
+    }
+  }
 </style>
 
-<!-- Boas-vindas e ação principal -->
-
-<div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Boas-vindas -->
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
   <div>
-    <h1 class="h4 fw-bold mb-0">Olá, {{ user.primeiro_nome }} 👋</h1>
-    <p class="text-muted small mb-0">{{ mes_referencia|date:"F/Y"|capfirst }}</p>
+    <h1 class="h4 fw-bold mb-1">Olá, {{ user.primeiro_nome }} 👋</h1>
+    <p class="text-muted small mb-0">
+      Acompanhe sua vida financeira por competência.
+    </p>
   </div>
-
-  <a href="{% url 'transactions:importar_extrato' %}"
-     class="btn fe-btn-primary btn-sm d-none d-md-inline-flex align-items-center gap-1 shadow-sm">
-    <i class="bi bi-cloud-upload"></i> Importar extrato do mês
-  </a>
 </div>
 
-<!-- Botão de importação para mobile -->
+<!-- Navegação por mês e ano -->
+<div class="fe-competencia mb-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-calendar3 text-primary me-1"></i>
+        Competência do painel
+      </p>
+      <p class="fe-competencia-legenda mb-0">
+        Selecione o mês para consultar receitas e despesas.
+      </p>
+    </div>
 
-<div class="d-md-none mb-3">
-  <a href="{% url 'transactions:importar_extrato' %}"
-     class="btn fe-btn-primary w-100 d-flex align-items-center justify-content-center gap-2 shadow-sm">
-    <i class="bi bi-cloud-upload"></i> Importar extrato do mês
-  </a>
+    <form method="get" action="{% url 'dashboard:painel' %}"
+          class="d-flex align-items-center gap-2 ms-auto">
+      <a
+        href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 1 %}12{% else %}{{ mes_selecionado|add:'-1' }}{% endif %}&ano={% if mes_selecionado == 1 %}{{ ano_selecionado|add:'-1' }}{% else %}{{ ano_selecionado }}{% endif %}"
+        class="btn btn-outline-secondary"
+        aria-label="Mês anterior"
+        title="Mês anterior">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+
+      <select
+        name="mes"
+        class="form-select fe-competencia-select"
+        aria-label="Selecionar mês"
+        onchange="this.form.submit()">
+        {% for mes in meses_disponiveis %}
+          <option value="{{ mes.numero }}"
+            {% if mes.numero == mes_selecionado %}selected{% endif %}>
+            {{ mes.nome }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <select
+        name="ano"
+        class="form-select fe-competencia-select fe-competencia-ano"
+        aria-label="Selecionar ano"
+        onchange="this.form.submit()">
+        {% for ano in anos_disponiveis %}
+          <option value="{{ ano }}"
+            {% if ano == ano_selecionado %}selected{% endif %}>
+            {{ ano }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <a
+        href="{% url 'dashboard:painel' %}?mes={% if mes_selecionado == 12 %}1{% else %}{{ mes_selecionado|add:'1' }}{% endif %}&ano={% if mes_selecionado == 12 %}{{ ano_selecionado|add:'1' }}{% else %}{{ ano_selecionado }}{% endif %}"
+        class="btn btn-outline-secondary"
+        aria-label="Próximo mês"
+        title="Próximo mês">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </form>
+  </div>
+
+  <div class="mt-3">
+    <span class="badge rounded-pill bg-primary-subtle text-primary">
+      <i class="bi bi-calendar-check me-1"></i>
+      {{ mes_referencia|date:"F/Y"|capfirst }}
+    </span>
+  </div>
 </div>
 
 <!-- Resumo financeiro -->
-
 <div class="row g-3 mb-3">
   <div class="col-12 col-md-4">
-    <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalReceitas" style="cursor: pointer;">
+    <div
+      class="fe-card fe-indicador-card h-100"
+      data-bs-toggle="modal"
+      data-bs-target="#modalReceitas"
+      role="button"
+      tabindex="0"
+      aria-label="Ver detalhes das receitas da competência selecionada"
+      onclick=""
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalReceitas')).show();}">
       <p class="text-muted small mb-1">
-        <i class="bi bi-arrow-down-circle text-success me-1"></i>Receitas do mês
+        <i class="bi bi-arrow-down-circle text-success me-1"></i>
+        Receitas do mês
       </p>
       <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
         {{ total_receitas|brl }}
       </p>
-      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
+      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">
+        Ver detalhes de {{ mes_referencia|date:"F/Y"|capfirst }} →
+      </small>
     </div>
   </div>
 
   <div class="col-12 col-md-4">
-    <div class="fe-card h-100" data-bs-toggle="modal" data-bs-target="#modalDespesas" style="cursor: pointer;">
+    <div
+      class="fe-card fe-indicador-card h-100"
+      data-bs-toggle="modal"
+      data-bs-target="#modalDespesas"
+      role="button"
+      tabindex="0"
+      aria-label="Ver detalhes das despesas da competência selecionada"
+      onclick=""
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bootstrap.Modal.getOrCreateInstance(document.getElementById('modalDespesas')).show();}">
       <p class="text-muted small mb-1">
-        <i class="bi bi-arrow-up-circle text-danger me-1"></i>Despesas realizadas
+        <i class="bi bi-arrow-up-circle text-danger me-1"></i>
+        Despesas realizadas
       </p>
       <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
         {{ total_despesas|brl }}
       </p>
-      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">Clique para detalhar &rarr;</small>
+      <small class="text-primary d-block mt-2" style="font-size: 0.75rem;">
+        Ver detalhes de {{ mes_referencia|date:"F/Y"|capfirst }} →
+      </small>
     </div>
   </div>
 
   <div class="col-12 col-md-4">
-    <div class="fe-card h-100">
+    <div class="fe-card fe-indicador-card h-100">
       <p class="text-muted small mb-1">
-        <i class="bi bi-wallet2 me-1"></i>Saldo disponível
+        <i class="bi bi-wallet2 me-1"></i>
+        Saldo disponível acumulado
       </p>
       <p class="h4 fw-bold mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
         {{ saldo_disponivel|brl }}
       </p>
+      <small class="text-muted d-block mt-2" style="font-size: 0.75rem;">
+        Resultado histórico dos lançamentos confirmados.
+      </small>
     </div>
   </div>
 </div>
 
 <!-- Quanto sobra com segurança -->
-
 <div class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %} mb-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
     <div>
       <p class="mb-1 fw-semibold">
-        <i class="bi bi-shield-check me-1"></i>Quanto sobra com segurança
+        <i class="bi bi-shield-check me-1"></i>
+        Quanto sobra com segurança
       </p>
       <p class="fe-valor-grande mb-0 {% if privacy_mode_on %}fe-privado{% endif %}">
         {{ sobra_segura|brl }}
@@ -179,7 +306,6 @@
 </div>
 
 <!-- Central de Avisos -->
-
 <div class="fe-card mb-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
@@ -197,7 +323,6 @@
   </div>
 
   <!-- Contas e parcelas vencidas -->
-
   <div class="mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">
       <i class="bi bi-exclamation-circle-fill text-danger"></i>
@@ -235,9 +360,7 @@
               </p>
 
               {% if item.categoria %}
-                <p class="small text-muted mb-0">
-                  {{ item.categoria.nome }}
-                </p>
+                <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
               {% endif %}
 
               {% if item.tipo == "conta" and item.pagamento %}
@@ -257,7 +380,9 @@
     {% else %}
       <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
         <i class="bi bi-check-circle text-success fs-4"></i>
-        <p class="small text-muted mb-0 mt-2">Nenhuma conta ou parcela vencida registrada. 🌿</p>
+        <p class="small text-muted mb-0 mt-2">
+          Nenhuma conta ou parcela vencida registrada. 🌿
+        </p>
       </div>
     {% endif %}
   </div>
@@ -265,7 +390,6 @@
   <hr class="my-4">
 
   <!-- Contas e parcelas a vencer -->
-
   <div>
     <div class="d-flex align-items-center gap-2 mb-3">
       <i class="bi bi-calendar-check text-warning"></i>
@@ -310,9 +434,7 @@
               </p>
 
               {% if item.categoria %}
-                <p class="small text-muted mb-0">
-                  {{ item.categoria.nome }}
-                </p>
+                <p class="small text-muted mb-0">{{ item.categoria.nome }}</p>
               {% endif %}
 
               {% if item.tipo == "conta" and item.pagamento %}
@@ -332,19 +454,24 @@
     {% else %}
       <div class="rounded-3 p-3 text-center" style="background: var(--fe-surface);">
         <i class="bi bi-calendar-check text-success fs-4"></i>
-        <p class="small text-muted mb-0 mt-2">Nenhuma conta ou parcela vencendo nos próximos 7 dias.</p>
+        <p class="small text-muted mb-0 mt-2">
+          Nenhuma conta ou parcela vencendo nos próximos 7 dias.
+        </p>
       </div>
     {% endif %}
   </div>
 </div>
 
 <!-- Categorias de despesas -->
-
 <div class="row g-3">
   <div class="col-12">
     <div class="fe-card h-100">
-      <p class="fw-semibold mb-3">
-        <i class="bi bi-bar-chart-line me-1"></i>Onde seu dinheiro foi este mês
+      <p class="fw-semibold mb-1">
+        <i class="bi bi-bar-chart-line me-1"></i>
+        Onde seu dinheiro foi
+      </p>
+      <p class="small text-muted mb-3">
+        Principais despesas de {{ mes_referencia|date:"F/Y"|capfirst }}.
       </p>
 
       {% if top_categorias %}
@@ -352,7 +479,8 @@
           <div class="mb-3">
             <div class="d-flex justify-content-between small mb-1">
               <span>
-                <i class="bi {{ cat.categoria__icone }} me-1" style="color: {{ cat.categoria__cor }};"></i>
+                <i class="bi {{ cat.categoria__icone }} me-1"
+                   style="color: {{ cat.categoria__cor }};"></i>
                 {{ cat.categoria__nome|default:"Sem categoria" }}
               </span>
               <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
@@ -360,26 +488,30 @@
               </span>
             </div>
             <div class="fe-progress">
-              <div class="fe-progress-bar" style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
+              <div class="fe-progress-bar"
+                   style="width: {% widthratio cat.total maior_categoria_total 100 %}%;"></div>
             </div>
           </div>
         {% endfor %}
       {% else %}
-        <p class="text-muted small mb-0">Você ainda não registrou despesas este mês.</p>
+        <p class="text-muted small mb-0">
+          Nenhuma despesa confirmada em {{ mes_referencia|date:"F/Y"|capfirst }}.
+        </p>
       {% endif %}
     </div>
   </div>
 </div>
 
 <!-- Meus objetivos -->
-
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
       <p class="fw-semibold mb-1">
         <i class="bi bi-bullseye me-1"></i>Meus objetivos
       </p>
-      <p class="small text-muted mb-0">Acompanhe o que você já guardou para cada objetivo.</p>
+      <p class="small text-muted mb-0">
+        Acompanhe o que você já guardou para cada objetivo.
+      </p>
     </div>
 
     <a href="{% url 'goals:lista' %}" class="btn btn-sm fe-btn-primary">
@@ -387,9 +519,11 @@
     </a>
   </div>
 
-  <div class="border rounded-3 p-3 mb-3" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+  <div class="border rounded-3 p-3 mb-3"
+       style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
     <div class="d-flex align-items-center gap-3">
-      <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(25, 135, 84, 0.12); flex-shrink: 0;">
+      <div class="rounded-circle d-flex align-items-center justify-content-center"
+           style="width: 48px; height: 48px; background: rgba(25, 135, 84, 0.12); flex-shrink: 0;">
         <i class="bi bi-piggy-bank text-success" style="font-size: 1.5rem;"></i>
       </div>
       <div>
@@ -405,7 +539,8 @@
     <div class="row g-3">
       {% for objetivo in objetivos|slice:":4" %}
         <div class="col-12 col-md-6">
-          <div class="border rounded-3 p-3 h-100" style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
+          <div class="border rounded-3 p-3 h-100"
+               style="border-color: var(--fe-border) !important; background-color: var(--fe-surface);">
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
               <div>
                 <p class="fw-semibold mb-1">
@@ -431,8 +566,14 @@
               </p>
             </div>
 
-            <div class="fe-progress mb-2" role="progressbar" aria-label="Progresso de {{ objetivo.nome }}" aria-valuenow="{{ objetivo.percentual_concluido }}" aria-valuemin="0" aria-valuemax="100">
-              <div class="fe-progress-bar" style="width: {{ objetivo.percentual_concluido }}%;"></div>
+            <div class="fe-progress mb-2"
+                 role="progressbar"
+                 aria-label="Progresso de {{ objetivo.nome }}"
+                 aria-valuenow="{{ objetivo.percentual_concluido }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+              <div class="fe-progress-bar"
+                   style="width: {{ objetivo.percentual_concluido }}%;"></div>
             </div>
 
             {% if objetivo.percentual_concluido >= 100 %}
@@ -442,7 +583,11 @@
             {% else %}
               <p class="small text-muted mb-0">
                 {% if objetivo.valor_alvo > objetivo.valor_acumulado %}
-                  Faltam <span class="{% if privacy_mode_on %}fe-privado{% endif %}">{{ objetivo.valor_restante|brl }}</span> para atingir o objetivo.
+                  Faltam
+                  <span class="{% if privacy_mode_on %}fe-privado{% endif %}">
+                    {{ objetivo.valor_restante|brl }}
+                  </span>
+                  para atingir o objetivo.
                 {% else %}
                   Objetivo concluído!
                 {% endif %}
@@ -464,24 +609,30 @@
     <div class="text-center py-4">
       <i class="bi bi-bullseye text-muted" style="font-size: 2rem;"></i>
       <p class="fw-semibold mt-2 mb-1">Você ainda não tem objetivos cadastrados.</p>
-      <p class="small text-muted mb-3">Crie seu primeiro objetivo e acompanhe seu progresso por aqui.</p>
-      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">Criar meu primeiro objetivo</a>
+      <p class="small text-muted mb-3">
+        Crie seu primeiro objetivo e acompanhe seu progresso por aqui.
+      </p>
+      <a href="{% url 'goals:lista' %}" class="btn fe-btn-primary btn-sm">
+        Criar meu primeiro objetivo
+      </a>
     </div>
   {% endif %}
 </div>
 
 <!-- Mercado agora -->
-
 <div class="fe-card mt-3">
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
       <p class="fw-semibold mb-1">
         <i class="bi bi-graph-up-arrow me-1 text-primary"></i>Mercado agora
       </p>
-      <p class="small text-muted mb-0">Acompanhe as principais moedas em relação ao real.</p>
+      <p class="small text-muted mb-0">
+        Acompanhe as principais moedas em relação ao real.
+      </p>
     </div>
 
-    <span class="badge rounded-pill border text-body" style="background: var(--fe-surface); border-color: var(--fe-border) !important;">
+    <span class="badge rounded-pill border text-body"
+          style="background: var(--fe-surface); border-color: var(--fe-border) !important;">
       <i class="bi bi-clock me-1"></i>Atualização periódica
     </span>
   </div>
@@ -503,7 +654,8 @@
           {% endif %}
 
               <div class="d-flex align-items-center gap-3 mb-4">
-                <div class="fe-moeda-bandeira d-flex align-items-center justify-content-center rounded-3 border shadow-sm" style="width: 54px; height: 46px; flex-shrink: 0;">
+                <div class="fe-moeda-bandeira d-flex align-items-center justify-content-center rounded-3 border shadow-sm"
+                     style="width: 54px; height: 46px; flex-shrink: 0;">
                   {% if moeda.codigo == "USD" %}
                     <img src="https://flagcdn.com/w80/us.png" alt="Bandeira dos Estados Unidos" width="38" height="25" style="object-fit: cover; border-radius: 3px;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
                     <span style="display:none;font-size:1.7rem;">🇺🇸</span>
@@ -570,7 +722,9 @@
       {% empty %}
         <div class="col-12">
           <div class="rounded-3 p-3" style="background: var(--fe-surface);">
-            <p class="small text-muted mb-0">As cotações das moedas selecionadas não estão disponíveis neste momento.</p>
+            <p class="small text-muted mb-0">
+              As cotações das moedas selecionadas não estão disponíveis neste momento.
+            </p>
           </div>
         </div>
       {% endfor %}
@@ -610,13 +764,15 @@
       </p>
       {% if hgbrasil.atualizado_em %}
         <p class="small text-muted mb-0">
-          <i class="bi bi-clock-history me-1"></i>Atualizado em: {{ hgbrasil.atualizado_em }}
+          <i class="bi bi-clock-history me-1"></i>
+          Atualizado em: {{ hgbrasil.atualizado_em }}
         </p>
       {% endif %}
     </div>
   {% else %}
     <div class="d-flex align-items-start gap-3 rounded-3 p-3" style="background: var(--fe-surface);">
-      <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; flex-shrink: 0; background: rgba(13, 110, 253, .10);">
+      <div class="rounded-circle d-flex align-items-center justify-content-center"
+           style="width: 42px; height: 42px; flex-shrink: 0; background: rgba(13, 110, 253, .10);">
         <i class="bi bi-info-circle text-primary fs-5"></i>
       </div>
       <div>
@@ -628,13 +784,13 @@
 </div>
 
 <!-- Modal receitas -->
-
 <div class="modal fade" id="modalReceitas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title fw-bold">
-          <i class="bi bi-arrow-down-circle me-2"></i>Receitas do Mês
+          <i class="bi bi-arrow-down-circle me-2"></i>
+          Receitas — {{ mes_referencia|date:"F/Y"|capfirst }}
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
@@ -654,13 +810,21 @@
               {% for item in receitas_detalhes %}
                 <tr>
                   <td>{{ item.data|date:"d/m/Y" }}</td>
-                  <td>{{ item.descricao }}</td>
-                  <td><span class="badge bg-secondary">{{ item.categoria.nome }}</span></td>
+                  <td>{{ item.descricao|default:"—" }}</td>
+                  <td>
+                    {% if item.categoria %}
+                      <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
+                    {% else %}
+                      <span class="text-muted">Sem categoria</span>
+                    {% endif %}
+                  </td>
                   <td class="text-end text-success fw-bold">{{ item.valor|brl }}</td>
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="4" class="text-center py-3 text-muted">Nenhuma receita registrada para este mês.</td>
+                  <td colspan="4" class="text-center py-3 text-muted">
+                    Nenhuma receita registrada nesta competência.
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -672,13 +836,13 @@
 </div>
 
 <!-- Modal despesas -->
-
 <div class="modal fade" id="modalDespesas" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
         <h5 class="modal-title fw-bold">
-          <i class="bi bi-arrow-up-circle me-2"></i>Despesas Realizadas no Mês
+          <i class="bi bi-arrow-up-circle me-2"></i>
+          Despesas — {{ mes_referencia|date:"F/Y"|capfirst }}
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
@@ -698,13 +862,21 @@
               {% for item in despesas_detalhes %}
                 <tr>
                   <td>{{ item.data|date:"d/m/Y" }}</td>
-                  <td>{{ item.descricao }}</td>
-                  <td><span class="badge bg-secondary">{{ item.categoria.nome }}</span></td>
+                  <td>{{ item.descricao|default:"—" }}</td>
+                  <td>
+                    {% if item.categoria %}
+                      <span class="badge bg-secondary">{{ item.categoria.nome }}</span>
+                    {% else %}
+                      <span class="text-muted">Sem categoria</span>
+                    {% endif %}
+                  </td>
                   <td class="text-end text-danger fw-bold">{{ item.valor|brl }}</td>
                 </tr>
               {% empty %}
                 <tr>
-                  <td colspan="4" class="text-center py-3 text-muted">Nenhuma despesa registrada para este mês.</td>
+                  <td colspan="4" class="text-center py-3 text-muted">
+                    Nenhuma despesa registrada nesta competência.
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
