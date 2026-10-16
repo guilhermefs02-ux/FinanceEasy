@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Central de Avisos | FinanceEasy{% endblock %}
+
+{% block content %}
+<style>
+  .avisos-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  .avisos-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .avisos-header h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.6rem, 4vw, 2rem);
+    font-weight: 750;
+  }
+
+  .avisos-subtitulo {
+    margin: 0;
+    opacity: .72;
+  }
+
+  .avisos-resumo {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .aviso-card {
+    border: 1px solid var(--bs-border-color, #dedede);
+    border-radius: 16px;
+    padding: 18px;
+    background: var(--bs-body-bg, #fff);
+    min-width: 0;
+  }
+
+  .aviso-card .aviso-numero {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 8px 0 4px;
+  }
+
+  .aviso-card .aviso-legenda {
+    font-size: .9rem;
+    opacity: .72;
+  }
+
+  .aviso-card.vencido {
+    border-top: 4px solid #dc3545;
+  }
+
+  .aviso-card.proximo {
+    border-top: 4px solid #f0ad4e;
+  }
+
+  .aviso-card.total {
+    border-top: 4px solid #64748b;
+  }
+
+  .aviso-secao {
+    margin-top: 28px;
+  }
+
+  .aviso-secao h2 {
+    font-size: 1.2rem;
+    font-weight: 750;
+    margin-bottom: 14px;
+  }
+
+  .aviso-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    border: 1px solid var(--bs-border-color, #dedede);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    background: var(--bs-body-bg, #fff);
+  }
+
+  .aviso-item-info {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .aviso-item-info h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+    overflow-wrap: anywhere;
+  }
+
+  .aviso-item-info p {
+    margin: 3px 0;
+    font-size: .9rem;
+    opacity: .78;
+  }
+
+  .aviso-valor {
+    font-size: 1.05rem;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+
+  .aviso-status {
+    display: inline-block;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+
+  .aviso-status.atrasado {
+    color: #b42332;
+    background: #fde8e8;
+  }
+
+  .aviso-status.pendente {
+    color: #8a5700;
+    background: #fff1d6;
+  }
+
+  .aviso-vazio {
+    border: 1px dashed var(--bs-border-color, #dedede);
+    border-radius: 14px;
+    padding: 22px 16px;
+    text-align: center;
+    opacity: .78;
+  }
+
+  .aviso-botao {
+    display: inline-block;
+    text-decoration: none;
+    border: 1px solid var(--bs-border-color, #ccc);
+    border-radius: 10px;
+    padding: 9px 13px;
+    font-size: .9rem;
+    font-weight: 650;
+    color: inherit;
+  }
+
+  @media (max-width: 640px) {
+    .avisos-resumo {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .aviso-card {
+      padding: 15px;
+    }
+
+    .aviso-item {
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<div class="avisos-container">
+  <header class="avisos-header">
+    <div>
+      <h1>Central de Avisos</h1>
+      <p class="avisos-subtitulo">
+        Acompanhe contas fixas e parcelas de dívidas vencidas ou próximas do vencimento.
+      </p>
+    </div>
+    <a href="{% url 'dashboard:painel' %}" class="aviso-botao">
+      Voltar ao painel
+    </a>
+  </header>
+
+  <section class="avisos-resumo" aria-label="Resumo dos avisos">
+    <div class="aviso-card total">
+      <span class="aviso-legenda">Total de pendências</span>
+      <span class="aviso-numero">{{ total_avisos|default:0 }}</span>
+      <span class="aviso-legenda">Contas e parcelas em aberto</span>
+    </div>
+
+    <div class="aviso-card vencido">
+      <span class="aviso-legenda">Vencidas</span>
+      <span class="aviso-numero">{{ total_vencidos|default:0 }}</span>
+      <span class="aviso-legenda">Precisam de atenção</span>
+    </div>
+
+    <div class="aviso-card proximo">
+      <span class="aviso-legenda">Próximos 7 dias</span>
+      <span class="aviso-numero">{{ total_a_vencer|default:0 }}</span>
+      <span class="aviso-legenda">Vencimentos próximos</span>
+    </div>
+  </section>
+
+  <section class="aviso-secao">
+    <h2>🔴 Contas e parcelas vencidas</h2>
+
+    {% if avisos_vencidos %}
+      {% for aviso in avisos_vencidos %}
+        <article class="aviso-item">
+          <div class="aviso-item-info">
+            <span class="aviso-status atrasado">Vencido</span>
+            <h3>{{ aviso.nome }}</h3>
+            <p>
+              {% if aviso.tipo == "conta" %}
+                Conta fixa
+              {% else %}
+                Parcela de dívida
+              {% endif %}
+              · Vencimento: {{ aviso.vencimento|date:"d/m/Y" }}
+            </p>
+            {% if aviso.tipo == "divida" %}
+              <p>Parcela pendente de pagamento.</p>
+            {% endif %}
+          </div>
+
+          <div class="aviso-valor">
+            {% if privacy_mode_on %}
+              ••••••
+            {% else %}
+              R$ {{ aviso.valor|floatformat:2 }}
+            {% endif %}
+          </div>
+
+          {% if aviso.tipo == "conta" and aviso.pagamento %}
+            {% if aviso.pagamento.status != "pago" %}
+              <form method="post"
+                    action="{% url 'dashboard:marcar_conta_paga' aviso.pagamento.id %}">
+                {% csrf_token %}
+                <button type="submit" class="aviso-botao">
+                  Marcar como paga
+                </button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="aviso-vazio">
+        <strong>Tudo em dia por aqui!</strong>
+        <p>Não há vencimentos atrasados registrados.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="aviso-secao">
+    <h2>🟡 A vencer nos próximos 7 dias</h2>
+
+    {% if avisos_a_vencer %}
+      {% for aviso in avisos_a_vencer %}
+        <article class="aviso-item">
+          <div class="aviso-item-info">
+            <span class="aviso-status pendente">Pendente</span>
+            <h3>{{ aviso.nome }}</h3>
+            <p>
+              {% if aviso.tipo == "conta" %}
+                Conta fixa
+              {% else %}
+                Parcela de dívida
+              {% endif %}
+              · Vencimento: {{ aviso.vencimento|date:"d/m/Y" }}
+            </p>
+          </div>
+
+          <div class="aviso-valor">
+            {% if privacy_mode_on %}
+              ••••••
+            {% else %}
+              R$ {{ aviso.valor|floatformat:2 }}
+            {% endif %}
+          </div>
+
+          {% if aviso.tipo == "conta" and aviso.pagamento %}
+            {% if aviso.pagamento.status != "pago" %}
+              <form method="post"
+                    action="{% url 'dashboard:marcar_conta_paga' aviso.pagamento.id %}">
+                {% csrf_token %}
+                <button type="submit" class="aviso-botao">
+                  Marcar como paga
+                </button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="aviso-vazio">
+        <strong>Nenhum vencimento próximo</strong>
+        <p>Não há contas ou parcelas com vencimento nos próximos 7 dias.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
