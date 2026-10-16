@@ -16,6 +16,11 @@ urlpatterns = [
         name="mercado",
     ),
     path(
+        "avisos/",
+        views.avisos,
+        name="avisos",
+    ),
+    path(
         "privacidade/",
         views.alternar_privacidade,
         name="alternar_privacidade",
