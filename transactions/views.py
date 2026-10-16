@@ -889,58 +889,68 @@ def lote_despesas_fixas(request):
 @login_required
 def marcar_conta_fixa_paga(request, pagamento_id):
     """
-    Marca um vencimento como pago.
-
-    Se já existir uma transação compatível, ela será vinculada ao pagamento
-    em vez de criar automaticamente outra despesa.
+    Marca uma conta fixa como paga e registra a despesa
+    na data efetiva do pagamento.
     """
     if request.method != "POST":
         return redirect("transactions:assinaturas")
 
-    pagamento = get_object_or_404(
-        RecurringBillPayment.objects.select_related(
-            "conta",
-            "conta__categoria",
-            "transacao",
-        ),
-        pk=pagamento_id,
-        conta__usuario=request.user,
-    )
-
-    if pagamento.status == RecurringBillPayment.Status.PAGO:
-        messages.info(request, "Este vencimento já está marcado como pago.")
-        return redirect("transactions:assinaturas")
-
-    conta = pagamento.conta
-
-    # Procura uma transação já existente do mesmo usuário, com valor,
-    # data e categoria compatíveis. Isso ajuda a evitar duplicações.
-    transacao_existente = Transaction.objects.filter(
-        usuario=request.user,
-        tipo=Transaction.Tipo.DESPESA,
-        data=pagamento.data_vencimento,
-        valor=pagamento.valor,
-        categoria=conta.categoria,
-        status=Transaction.Status.CONFIRMADA,
-    ).order_by("criado_em").first()
-
     with db_transaction.atomic():
-        if transacao_existente:
-            pagamento.transacao = transacao_existente
+        pagamento = get_object_or_404(
+            RecurringBillPayment.objects.select_for_update().select_related(
+                "conta",
+                "conta__categoria",
+            ),
+            pk=pagamento_id,
+            conta__usuario=request.user,
+        )
+
+        if pagamento.status == RecurringBillPayment.Status.PAGO:
+            messages.info(
+                request,
+                "Este vencimento já está marcado como pago.",
+            )
+            return redirect("transactions:assinaturas")
+
+        conta = pagamento.conta
+        data_pagamento = timezone.localdate()
+
+        transacao = None
+
+        # Reutiliza apenas a transação vinculada a este pagamento
+        # e que pertence ao usuário atual.
+        if pagamento.transacao_id:
+            transacao = Transaction.objects.filter(
+                pk=pagamento.transacao_id,
+                usuario=request.user,
+            ).first()
+
+        if transacao:
+            transacao.tipo = Transaction.Tipo.DESPESA
+            transacao.valor = pagamento.valor
+            transacao.data = data_pagamento
+            transacao.categoria = conta.categoria
+            transacao.descricao = f"Pagamento: {conta.nome_servico}"
+            transacao.origem = Transaction.Origem.MANUAL
+            transacao.status = Transaction.Status.CONFIRMADA
+            transacao.tipo_recorrencia = (
+                Transaction.TipoRecorrencia.FIXA
+            )
+            transacao.save()
         else:
             transacao = Transaction.objects.create(
                 usuario=request.user,
                 tipo=Transaction.Tipo.DESPESA,
                 valor=pagamento.valor,
-                data=pagamento.data_vencimento,
+                data=data_pagamento,
                 categoria=conta.categoria,
                 descricao=f"Pagamento: {conta.nome_servico}",
                 origem=Transaction.Origem.MANUAL,
                 status=Transaction.Status.CONFIRMADA,
                 tipo_recorrencia=Transaction.TipoRecorrencia.FIXA,
             )
-            pagamento.transacao = transacao
 
+        pagamento.transacao = transacao
         pagamento.status = RecurringBillPayment.Status.PAGO
         pagamento.pago_em = timezone.now()
         pagamento.save(
@@ -953,7 +963,11 @@ def marcar_conta_fixa_paga(request, pagamento_id):
 
     messages.success(
         request,
-        f"{conta.nome_servico} marcada como paga.",
+        (
+            f"{conta.nome_servico} marcada como paga. "
+            f"A despesa foi registrada no extrato em "
+            f"{data_pagamento.strftime('%d/%m/%Y')}."
+        ),
     )
 
     return redirect("transactions:assinaturas")
