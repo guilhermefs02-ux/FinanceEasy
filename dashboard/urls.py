@@ -11,6 +11,11 @@ urlpatterns = [
         name="painel",
     ),
     path(
+        "mercado/",
+        views.mercado,
+        name="mercado",
+    ),
+    path(
         "privacidade/",
         views.alternar_privacidade,
         name="alternar_privacidade",
