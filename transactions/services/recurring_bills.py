@@ -13,27 +13,44 @@ def _data_vencimento(ano: int, mes: int, dia: int) -> date:
     return date(ano, mes, min(dia, ultimo_dia))
 
 
+def _proximo_mes(ano: int, mes: int) -> tuple[int, int]:
+    """Retorna o ano e o mês seguintes."""
+    if mes == 12:
+        return ano + 1, 1
+
+    return ano, mes + 1
+
+
 @transaction.atomic
-def gerar_vencimentos_contas_fixas(usuario, hoje: date | None = None) -> int:
+def gerar_vencimentos_contas_fixas(
+    usuario,
+    hoje: date | None = None,
+) -> int:
     """
-    Cria os próximos vencimentos das contas fixas ativas.
+    Gera os próximos vencimentos das contas fixas ativas.
 
     Contas mensais:
-        Cria até 12 vencimentos futuros.
+        Mantém até 12 vencimentos a partir do próximo vencimento
+        ainda não vencido, incluindo o dia atual quando aplicável.
 
     Contas anuais:
-        Cria até 2 vencimentos futuros, considerando o mês e o dia
-        configurados para a conta.
+        Mantém até 2 vencimentos anuais a partir do próximo
+        vencimento ainda não vencido.
 
-    Vencimentos existentes são preservados para evitar duplicações.
+    Vencimentos existentes são preservados, inclusive os que já
+    foram pagos, para evitar duplicações e perda do histórico.
     """
     hoje = hoje or timezone.localdate()
     criados = 0
 
-    contas = RecurringBill.objects.filter(
-        usuario=usuario,
-        ativo=True,
-    ).select_related("categoria")
+    contas = (
+        RecurringBill.objects.filter(
+            usuario=usuario,
+            ativo=True,
+        )
+        .select_related("categoria")
+        .order_by("pk")
+    )
 
     for conta in contas:
         if conta.periodicidade == RecurringBill.Periodicidade.MENSAL:
@@ -46,12 +63,9 @@ def gerar_vencimentos_contas_fixas(usuario, hoje: date | None = None) -> int:
                 conta.dia_vencimento,
             )
 
+            # Se o vencimento deste mês já passou, começa no mês seguinte.
             if primeiro_vencimento < hoje:
-                if mes == 12:
-                    ano += 1
-                    mes = 1
-                else:
-                    mes += 1
+                ano, mes = _proximo_mes(ano, mes)
 
             for _ in range(12):
                 vencimento = _data_vencimento(
@@ -63,22 +77,20 @@ def gerar_vencimentos_contas_fixas(usuario, hoje: date | None = None) -> int:
                 _, criado = RecurringBillPayment.objects.get_or_create(
                     conta=conta,
                     data_vencimento=vencimento,
-                    defaults={"valor": conta.valor},
+                    defaults={
+                        "valor": conta.valor,
+                    },
                 )
 
                 if criado:
                     criados += 1
 
-                if mes == 12:
-                    ano += 1
-                    mes = 1
-                else:
-                    mes += 1
+                ano, mes = _proximo_mes(ano, mes)
 
         elif conta.periodicidade == RecurringBill.Periodicidade.ANUAL:
             mes = conta.mes_vencimento
 
-            if not mes:
+            if not mes or not 1 <= mes <= 12:
                 continue
 
             ano = hoje.year
@@ -89,6 +101,7 @@ def gerar_vencimentos_contas_fixas(usuario, hoje: date | None = None) -> int:
                 conta.dia_vencimento,
             )
 
+            # Se o vencimento anual já passou, começa no próximo ano.
             if primeiro_vencimento < hoje:
                 ano += 1
 
@@ -102,7 +115,9 @@ def gerar_vencimentos_contas_fixas(usuario, hoje: date | None = None) -> int:
                 _, criado = RecurringBillPayment.objects.get_or_create(
                     conta=conta,
                     data_vencimento=vencimento,
-                    defaults={"valor": conta.valor},
+                    defaults={
+                        "valor": conta.valor,
+                    },
                 )
 
                 if criado:
