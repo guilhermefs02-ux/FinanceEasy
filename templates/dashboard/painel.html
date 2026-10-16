@@ -699,33 +699,10 @@
     </div>
   </div>
 
-  <!-- Saldo e sobra segura -->
+  <!-- Sobra segura -->
   <div class="row g-3 mb-4">
 
-    <div class="col-12 col-lg-6">
-      <section class="fe-saldo-destaque {% if saldo_disponivel < 0 %}negativo{% endif %}">
-        <i class="bi bi-wallet2 fe-saldo-decoracao"></i>
-
-        <p class="fe-saldo-rotulo mb-3">
-          <i class="bi bi-graph-up-arrow me-2"></i>
-          Saldo disponível acumulado
-        </p>
-
-        <div class="fe-saldo-valor mb-3 {% if privacy_mode_on %}fe-privado{% endif %}">
-          {{ saldo_disponivel|brl }}
-        </div>
-
-        <p class="fe-saldo-descricao mb-0">
-          {% if saldo_disponivel < 0 %}
-            Seu saldo está negativo. Confira seus lançamentos e planeje os próximos pagamentos.
-          {% else %}
-            Acompanhe o resultado acumulado dos seus lançamentos confirmados.
-          {% endif %}
-        </p>
-      </section>
-    </div>
-
-    <div class="col-12 col-lg-6">
+    <div class="col-12">
       <section class="fe-sobra-segura {% if sobra_segura < 0 %}negativa{% endif %}">
         <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
           <div>
