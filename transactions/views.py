@@ -249,174 +249,286 @@ def lote_despesas(request):
 
 @login_required
 def importar_extrato(request):
-    """UC04 — Importar Extrato Bancário e Fatura."""
-    if request.method == "POST":
-        form = ImportUploadForm(
-            request.POST,
-            request.FILES,
-            user=request.user,
+    """
+    UC04 — Importar extrato bancário e fatura.
+
+    Otimizações:
+    - Calcula os hashes antes de consultar o banco.
+    - Consulta duplicatas em blocos, em vez de fazer uma consulta
+      individual para cada lançamento.
+    - Identifica duplicatas existentes e repetidas no mesmo arquivo.
+    - Carrega as categorias uma única vez.
+    - Reutiliza sugestões para descrições iguais no mesmo arquivo.
+    - Grava as novas transações em lote e dentro de uma transação
+      atômica para evitar importações parcialmente gravadas.
+    """
+    if request.method != "POST":
+        form = ImportUploadForm(user=request.user)
+        return render(
+            request,
+            "transactions/importar_extrato.html",
+            {"form": form},
         )
 
-        if form.is_valid():
-            arquivo = form.cleaned_data["arquivo"]
+    form = ImportUploadForm(
+        request.POST,
+        request.FILES,
+        user=request.user,
+    )
 
-            limite_bytes = getattr(
-                settings,
-                "MAX_UPLOAD_SIZE_BYTES",
-                10 * 1024 * 1024,
+    if not form.is_valid():
+        return render(
+            request,
+            "transactions/importar_extrato.html",
+            {"form": form},
+        )
+
+    arquivo = form.cleaned_data["arquivo"]
+
+    limite_bytes = getattr(
+        settings,
+        "MAX_UPLOAD_SIZE_BYTES",
+        10 * 1024 * 1024,
+    )
+
+    if arquivo.size > limite_bytes:
+        limite_mb = limite_bytes / (1024 * 1024)
+
+        messages.error(
+            request,
+            f"O arquivo selecionado é muito grande. "
+            f"O limite para importação é de {limite_mb:g} MB. "
+            "Exporte novamente o extrato em um arquivo menor.",
+        )
+
+        return render(
+            request,
+            "transactions/importar_extrato.html",
+            {"form": form},
+        )
+
+    tipo_conta = form.cleaned_data["tipo_conta"]
+    cartao_divida = form.cleaned_data.get("cartao_divida")
+    formato = formato_por_extensao(arquivo.name)
+
+    if not formato:
+        messages.error(
+            request,
+            "Não conseguimos ler este arquivo. "
+            "Certifique-se de exportar o extrato no formato "
+            "OFX ou CSV diretamente do aplicativo do seu banco.",
+        )
+
+        return render(
+            request,
+            "transactions/importar_extrato.html",
+            {"form": form},
+        )
+
+    try:
+        linhas = parse_extrato(arquivo, formato)
+    except ExtratoInvalidoError as exc:
+        messages.error(request, str(exc))
+
+        return render(
+            request,
+            "transactions/importar_extrato.html",
+            {"form": form},
+        )
+
+    # Prepara os lançamentos antes de consultar o banco de dados.
+    linhas_preparadas = []
+    hashes_unicos = set()
+
+    for linha in linhas:
+        valor = linha["valor"]
+
+        tipo = (
+            Transaction.Tipo.RECEITA
+            if valor >= 0
+            else Transaction.Tipo.DESPESA
+        )
+
+        valor_abs = abs(valor)
+        descricao_banco = linha["descricao"]
+
+        hash_dedup = Transaction.calcular_hash(
+            request.user.id,
+            linha["data"],
+            valor_abs,
+            descricao_banco,
+        )
+
+        linhas_preparadas.append(
+            {
+                "data": linha["data"],
+                "tipo": tipo,
+                "valor": valor_abs,
+                "descricao": descricao_banco,
+                "hash_dedup": hash_dedup,
+            }
+        )
+
+        hashes_unicos.add(hash_dedup)
+
+    # Busca hashes já existentes em blocos de até 500 itens.
+    # Isso evita uma consulta .exists() para cada lançamento.
+    hashes_existentes = set()
+    lista_hashes = list(hashes_unicos)
+    tamanho_bloco = 500
+
+    for inicio in range(0, len(lista_hashes), tamanho_bloco):
+        bloco = lista_hashes[inicio:inicio + tamanho_bloco]
+
+        encontrados = Transaction.objects.filter(
+            usuario=request.user,
+            hash_dedup__in=bloco,
+        ).values_list("hash_dedup", flat=True)
+
+        hashes_existentes.update(encontrados)
+
+    # Carrega as categorias de despesa e receita uma única vez.
+    # A seleção respeita a ordenação do queryset original e mantém
+    # a primeira categoria encontrada para cada nome e tipo.
+    categorias_por_nome = {}
+
+    for tipo_categoria in (
+        Category.Tipo.DESPESA,
+        Category.Tipo.RECEITA,
+    ):
+        categorias = Category.objects.para_usuario(
+            request.user,
+            tipo_categoria,
+        ).order_by("tipo", "nome")
+
+        for categoria_item in categorias:
+            chave = (
+                categoria_item.tipo,
+                categoria_item.nome.casefold(),
             )
 
-            if arquivo.size > limite_bytes:
-                limite_mb = limite_bytes / (1024 * 1024)
+            categorias_por_nome.setdefault(chave, categoria_item)
 
-                messages.error(
-                    request,
-                    f"O arquivo selecionado é muito grande. "
-                    f"O limite para importação é de {limite_mb:g} MB. "
-                    "Exporte novamente o extrato em um arquivo menor.",
+    # O conjunto também detecta lançamentos repetidos dentro
+    # do próprio arquivo, mesmo antes de gravá-los no banco.
+    hashes_processados = set(hashes_existentes)
+
+    # Mantém o comportamento da categorização atual, mas evita
+    # repetir a mesma sugestão para descrições iguais no arquivo.
+    sugestoes_por_descricao = {}
+
+    transacoes_novas = []
+    duplicadas = 0
+
+    for linha in linhas_preparadas:
+        hash_dedup = linha["hash_dedup"]
+
+        if hash_dedup in hashes_processados:
+            duplicadas += 1
+            continue
+
+        hashes_processados.add(hash_dedup)
+
+        tipo = linha["tipo"]
+        descricao_banco = linha["descricao"]
+
+        chave_sugestao = (
+            tipo,
+            descricao_banco.strip().casefold(),
+        )
+
+        if chave_sugestao not in sugestoes_por_descricao:
+            sugestoes_por_descricao[chave_sugestao] = (
+                sugerir_categoria(
+                    descricao_banco,
+                    tipo,
                 )
+            )
 
-                return render(
-                    request,
-                    "transactions/importar_extrato.html",
-                    {"form": form},
+        sugestao = sugestoes_por_descricao[chave_sugestao]
+
+        categoria = categorias_por_nome.get(
+            (
+                tipo,
+                sugestao.nome_categoria.casefold(),
+            )
+        )
+
+        if categoria is None:
+            categoria = categorias_por_nome.get(
+                (
+                    tipo,
+                    "Outros",
                 )
+            )
 
-            tipo_conta = form.cleaned_data["tipo_conta"]
-            cartao_divida = form.cleaned_data.get("cartao_divida")
-            formato = formato_por_extensao(arquivo.name)
-
-            if not formato:
-                messages.error(
-                    request,
-                    "Não conseguimos ler este arquivo. "
-                    "Certifique-se de exportar o extrato no formato "
-                    "OFX ou CSV diretamente do aplicativo do seu banco.",
-                )
-
-                return render(
-                    request,
-                    "transactions/importar_extrato.html",
-                    {"form": form},
-                )
-
-            try:
-                linhas = parse_extrato(arquivo, formato)
-            except ExtratoInvalidoError as exc:
-                messages.error(request, str(exc))
-
-                return render(
-                    request,
-                    "transactions/importar_extrato.html",
-                    {"form": form},
-                )
-
-            batch = ImportBatch.objects.create(
+        transacoes_novas.append(
+            Transaction(
                 usuario=request.user,
-                arquivo_nome=arquivo.name,
-                formato=formato,
-                tipo_conta=tipo_conta,
-                cartao_divida=cartao_divida,
-                total_linhas=len(linhas),
+                tipo=tipo,
+                valor=linha["valor"],
+                data=linha["data"],
+                categoria=categoria,
+                descricao=descricao_banco,
+                descricao_origem_banco=descricao_banco,
+                origem=Transaction.Origem.IMPORTADO,
+                status=Transaction.Status.PENDENTE,
+                categoria_sugerida_confianca=sugestao.confianca,
+                hash_dedup=hash_dedup,
+                debito_fatura_cartao=(
+                    cartao_divida
+                    if tipo_conta == ImportBatch.TipoConta.FATURA_CARTAO
+                    else None
+                ),
+            )
+        )
+
+    # Grava o lote e as transações de uma vez.
+    # Se houver erro na gravação, o banco desfaz toda a operação.
+    with db_transaction.atomic():
+        batch = ImportBatch.objects.create(
+            usuario=request.user,
+            arquivo_nome=arquivo.name,
+            formato=formato,
+            tipo_conta=tipo_conta,
+            cartao_divida=cartao_divida,
+            total_linhas=len(linhas),
+        )
+
+        for transacao in transacoes_novas:
+            transacao.import_batch = batch
+
+        if transacoes_novas:
+            Transaction.objects.bulk_create(
+                transacoes_novas,
+                batch_size=200,
             )
 
-            novas, duplicadas = 0, 0
+        batch.total_novas = len(transacoes_novas)
+        batch.total_duplicadas = duplicadas
+        batch.concluido = not transacoes_novas
 
-            for linha in linhas:
-                valor = linha["valor"]
+        batch.save(
+            update_fields=[
+                "total_novas",
+                "total_duplicadas",
+                "concluido",
+            ]
+        )
 
-                tipo = (
-                    Transaction.Tipo.RECEITA
-                    if valor >= 0
-                    else Transaction.Tipo.DESPESA
-                )
+    if not transacoes_novas:
+        messages.info(
+            request,
+            "Todas as transações deste extrato já foram "
+            "importadas anteriormente. Nenhum novo gasto "
+            "foi adicionado.",
+        )
 
-                valor_abs = abs(valor)
-                descricao_banco = linha["descricao"]
+        return redirect("transactions:extrato")
 
-                hash_dedup = Transaction.calcular_hash(
-                    request.user.id,
-                    linha["data"],
-                    valor_abs,
-                    descricao_banco,
-                )
-
-                if Transaction.objects.filter(
-                    usuario=request.user,
-                    hash_dedup=hash_dedup,
-                ).exists():
-                    duplicadas += 1
-                    continue
-
-                sugestao = sugerir_categoria(
-                    descricao_banco,
-                    tipo,
-                )
-
-                categorias_usuario = Category.objects.para_usuario(
-                    request.user,
-                    tipo,
-                )
-
-                categoria = categorias_usuario.filter(
-                    nome__iexact=sugestao.nome_categoria,
-                ).first()
-
-                if categoria is None:
-                    categoria = categorias_usuario.filter(
-                        nome="Outros",
-                    ).first()
-
-                Transaction.objects.create(
-                    usuario=request.user,
-                    tipo=tipo,
-                    valor=valor_abs,
-                    data=linha["data"],
-                    categoria=categoria,
-                    descricao=descricao_banco,
-                    descricao_origem_banco=descricao_banco,
-                    origem=Transaction.Origem.IMPORTADO,
-                    status=Transaction.Status.PENDENTE,
-                    import_batch=batch,
-                    categoria_sugerida_confianca=sugestao.confianca,
-                    hash_dedup=hash_dedup,
-                    debito_fatura_cartao=(
-                        cartao_divida
-                        if tipo_conta == ImportBatch.TipoConta.FATURA_CARTAO
-                        else None
-                    ),
-                )
-
-                novas += 1
-
-            batch.total_novas = novas
-            batch.total_duplicadas = duplicadas
-            batch.save()
-
-            if novas == 0:
-                messages.info(
-                    request,
-                    "Todas as transações deste extrato já foram "
-                    "importadas anteriormente. Nenhum novo gasto "
-                    "foi adicionado.",
-                )
-
-                batch.concluido = True
-                batch.save()
-
-                return redirect("transactions:extrato")
-
-            return redirect(
-                "transactions:conciliar",
-                batch_id=batch.pk,
-            )
-    else:
-        form = ImportUploadForm(user=request.user)
-
-    return render(
-        request,
-        "transactions/importar_extrato.html",
-        {"form": form},
+    return redirect(
+        "transactions:conciliar",
+        batch_id=batch.pk,
     )
 
 
