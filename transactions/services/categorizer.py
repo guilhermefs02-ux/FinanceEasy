@@ -1,16 +1,14 @@
-"""Categorização automática de transações importadas (UC04, passo 7 e UC05).
+"""Categorização automática de transações importadas (UC04 e UC05).
 
 Ordem de classificação:
-1. Regras específicas por descrição, sem chamadas externas.
-2. Hugging Face para despesas sem indicadores de transferência genérica.
-3. Categoria "Outros" quando não houver evidência suficiente.
+1. Regras específicas por descrição.
+2. Hugging Face para despesas sem regra específica.
+3. Melhor sugestão disponível, identificada como baixa confiança,
+   quando não houver evidência suficiente.
 
-Importante:
-- Não inferir a finalidade de uma transferência apenas pelo banco ou carteira
-  digital utilizada.
-- Evitar classificar transferências entre contas como compras.
-- Reconhecer contas de consumo e serviços recorrentes.
-- Respeitar as categorias cadastradas no sistema.
+As categorias sugeridas respeitam as categorias padrão existentes
+no banco de dados. Não se presume a finalidade de transferências
+apenas pelo banco ou carteira digital utilizados.
 """
 
 from __future__ import annotations
@@ -26,98 +24,137 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
-# Regras específicas para despesas.
-# A descrição é normalizada antes da comparação: acentos são removidos
-# e o texto é convertido para maiúsculas.
+# Categorias oficiais existentes no FinanceEasy.
+CATEGORIA_OUTROS = "Outros"
+CATEGORIA_ALIMENTACAO = "Alimentação/Supermercado"
+CATEGORIA_MORADIA = "Moradia/Casa"
+CATEGORIA_TRANSPORTE = "Transporte"
+CATEGORIA_EDUCACAO = "Educação"
+CATEGORIA_LAZER = "Lazer"
+CATEGORIA_ASSINATURAS = "Assinaturas"
+
+CATEGORIAS_DESPESA_PADRAO = [
+    CATEGORIA_ALIMENTACAO,
+    CATEGORIA_MORADIA,
+    CATEGORIA_TRANSPORTE,
+    CATEGORIA_EDUCACAO,
+    CATEGORIA_LAZER,
+    CATEGORIA_ASSINATURAS,
+    CATEGORIA_OUTROS,
+]
+
+CATEGORIAS_RECEITA_PADRAO = [
+    "Salário",
+    "Bicos/Extras",
+    "Venda de Usados",
+    "Benefício",
+    "Outros",
+]
+
+
+# Regras de despesas.
+# A comparação é feita com texto sem acentos e em maiúsculas.
 REGRAS_PALAVRA_CHAVE = [
-    # Alimentação e delivery
     (
         r"\bIFOOD\b|\bRAPPI\b|\bPIZZARIA\b|\bRESTAURANTE\b|"
         r"\bLANCHONETE\b|\bPADARIA\b|\bACOUGUE\b|\bHORTIFRUTI\b|"
-        r"\bSUPERMERCADO\b|\bMERCADO\s+CARDOSO\b|\bMERCADINHO\b|"
-        r"\bBURGER\s?KING\b|\bMCDONALD",
-        "Alimentação/Supermercado",
+        r"\bSUPERMERCADO\b|\bMERCADO\b|\bMERCADINHO\b|"
+        r"\bBURGER\s?KING\b|\bMCDONALD|\bHABIBS\b|"
+        r"\bLANCHES\b|\bCONFEITARIA\b|\bPASTELARIA\b",
+        CATEGORIA_ALIMENTACAO,
     ),
-
-    # Transporte
     (
         r"\bUBER\b|\b99\s?POP\b|\b99APP\b|\b99TAXI\b|"
-        r"\bPOSTO\b|\bCOMBUSTIVEL\b|\bESTACIONAMENTO\b|"
-        r"\bPEDAGIO\b|\bBILHETE\s?UNICO\b",
-        "Transporte",
+        r"\bPOSTO\b|\bCOMBUSTIVEL\b|\bGASOLINA\b|\bDIESEL\b|"
+        r"\bESTACIONAMENTO\b|\bPEDAGIO\b|\bBILHETE\s?UNICO\b|"
+        r"\bSEM\s?PARAR\b|\bVELOE\b",
+        CATEGORIA_TRANSPORTE,
     ),
-
-    # Assinaturas e entretenimento digital
     (
         r"\bNETFLIX\b|\bSPOTIFY\b|\bDISNEY\s?\+?\b|\bHBO\b|"
-        r"\bAMAZON\s?PRIME\b|\bYOUTUBE\s?PREMIUM\b|\bDEEZER\b|"
-        r"\bPARAMOUNT\b",
-        "Assinaturas",
+        r"\bMAX\b|\bAMAZON\s?PRIME\b|\bYOUTUBE\s?PREMIUM\b|"
+        r"\bDEEZER\b|\bPARAMOUNT\b|\bGLOBOPLAY\b|"
+        r"\bAPPLE\s?MUSIC\b|\bGOOGLE\s?ONE\b",
+        CATEGORIA_ASSINATURAS,
     ),
-
-    # Moradia, água, energia, gás e internet
     (
         r"\bSABESP\b|\bENEL\b|\bELETROPAULO\b|\bCPFL\b|"
         r"\bCEMIG\b|\bLIGHT\b|\bCOPEL\b|\bCOMGAS\b|"
         r"\bSANEPAR\b|\bSANEAMENTO\b|\bCIA\s?SANEAMEN\b|"
         r"\bWORLD\s?FIBRA\b|\bTELECOM\b|\bVIVO\b|\bCLARO\b|"
         r"\bTIM\b|\bOI\s?FIBRA\b|\bINTERNET\b|\bALUGUEL\b|"
-        r"\bCONDOMINIO\b|\bIPTU\b",
-        "Moradia/Casa",
+        r"\bCONDOMINIO\b|\bIPTU\b|\bENERGIA\s?ELETRICA\b|"
+        r"\bAGUA\s?E\s?ESGOTO\b|\bGAS\s?ENCANADO\b|"
+        r"\bSANEPAR\b|\bSANEAGO\b|\bEMASA\b",
+        CATEGORIA_MORADIA,
     ),
-
-    # Saúde
-    (
-        r"\bFARMACIA\b|\bDROGARIA\b|\bDROGASIL\b|\bPACHECO\b|"
-        r"\bCLINICA\s?MEDICA\b|\bHOSPITAL\b|\bLABORATORIO\b|"
-        r"\bDENTISTA\b|\bODONTOLOG",
-        "Outros",
-    ),
-
-    # Educação
     (
         r"\bFACULDADE\b|\bESCOLA\b|\bCURSO\b|\bUDEMY\b|"
-        r"\bALURA\b|\bLIVRARIA\b",
-        "Educação",
+        r"\bALURA\b|\bLIVRARIA\b|\bMENSALIDADE\s?ESCOLAR\b|"
+        r"\bMATERIAL\s?ESCOLAR\b|\bIDIOMAS\b",
+        CATEGORIA_EDUCACAO,
     ),
-
-    # Lazer
     (
         r"\bCINEMA\b|\bINGRESSO\b|\bSHOW\b|\bSTEAM\b|"
-        r"\bPLAYSTATION\b|\bXBOX\b",
-        "Lazer",
+        r"\bPLAYSTATION\b|\bXBOX\b|\bNINTENDO\b|"
+        r"\bPARQUE\s?DE\s?DIVERSAO\b|\bBOLICHE\b",
+        CATEGORIA_LAZER,
+    ),
+    # Não existe uma categoria específica de saúde no cadastro padrão.
+    # Por isso, esses estabelecimentos permanecem em Outros.
+    (
+        r"\bFARMACIA\b|\bDROGARIA\b|\bDROGASIL\b|\bPACHECO\b|"
+        r"\bCLINICA\b|\bHOSPITAL\b|\bLABORATORIO\b|"
+        r"\bDENTISTA\b|\bODONTOLOG\b",
+        CATEGORIA_OUTROS,
     ),
 ]
 
 
-# Receitas identificáveis pela descrição.
-# Recebimentos por Pix sem contexto suficiente continuam em "Outros".
+# Regras para receitas identificáveis.
 REGRAS_RECEITA = [
     (
         r"\bSALARIO\b|\bFOLHA\s?DE\s?PAGAMENTO\b|"
-        r"\bPGTO\s?SAL\b|\bPAGAMENTO\s?DE\s?SALARIO\b",
+        r"\bPGTO\s?SAL\b|\bPAGAMENTO\s?DE\s?SALARIO\b|"
+        r"\bCREDITO\s?SALARIAL\b|\bORDENADO\b",
         "Salário",
+    ),
+    (
+        r"\bAPOSENTADORIA\b|\bPENSAO\s?INSS\b|\bINSS\s?BENEFICIO\b|"
+        r"\bBENEFICIO\s?PREVIDENCIARIO\b|\bAUXILIO\b|"
+        r"\bBOLSA\s?FAMILIA\b|\bBPC\b|\bLOAS\b",
+        "Benefício",
+    ),
+    (
+        r"\bFREELANCE\b|\bFREELA\b|\bSERVICO\s?PRESTADO\b|"
+        r"\bTRABALHO\s?EXTRA\b|\bRENDA\s?EXTRA\b|"
+        r"\bCOMISSAO\b|\bHONORARIOS\s?RECEBIDOS\b",
+        "Bicos/Extras",
+    ),
+    (
+        r"\bVENDA\s?DE\s?USADOS\b|\bVENDA\s?USADO\b|"
+        r"\bVENDA\s?VEICULO\b|\bVENDA\s?MOVEIS\b",
+        "Venda de Usados",
     ),
 ]
 
 
-# Descrições que não revelam a finalidade real da movimentação.
-# Nesses casos, não enviamos o texto ao modelo para tentar adivinhar
-# uma categoria com base apenas no nome de um banco ou carteira.
+# Não se deve deduzir a finalidade a partir de uma transferência genérica.
 PADROES_TRANSFERENCIA_GENERICA = [
     r"\bTRANSFERENCIA\s+(?:ENVIADA|RECEBIDA)\b",
-    r"\bTRANSFERENCIA\s+RECEBIDA\b",
+    r"\bTRANSFERENCIA\s+(?:ENTRE\s+CONTAS|PIX)\b",
     r"\bPIX\s+(?:ENVIADO|RECEBIDO)\b",
     r"\bTED\s+(?:ENVIADA|RECEBIDA)\b",
     r"\bDOC\s+(?:ENVIADO|RECEBIDO)\b",
     r"\bPAGAMENTO\s+DE\s+FATURA\b",
+    r"\bLIQUIDACAO\s+DE\s+FATURA\b",
+    r"\bPAGAMENTO\s+DE\s+CARTAO\b",
 ]
 
-# Pagamentos de boletos sem identificação suficiente do beneficiário
-# também não devem ser classificados por tentativa.
 PADROES_BOLETO_GENERICO = [
     r"\bPAGAMENTO\s+DE\s+BOLETO\b",
     r"\bBOLETO\s+PAGO\b",
+    r"\bPAGAMENTO\s+TITULO\b",
 ]
 
 
@@ -173,15 +210,23 @@ def _por_regras(
 
 
 def _categorias_despesa_labels() -> list[str]:
-    """Obtém apenas categorias de despesa existentes no banco."""
+    """Retorna categorias padrão de despesas existentes no banco."""
     from transactions.models import Category
 
-    return list(
-        Category.objects.filter(tipo="despesa").values_list(
-            "nome",
-            flat=True,
-        )
-    ) or ["Outros"]
+    existentes = list(
+        Category.objects.filter(
+            tipo=Category.Tipo.DESPESA,
+            usuario__isnull=True,
+        ).values_list("nome", flat=True)
+    )
+
+    if not existentes:
+        return CATEGORIAS_DESPESA_PADRAO.copy()
+
+    permitidas = set(CATEGORIAS_DESPESA_PADRAO)
+    return [nome for nome in existentes if nome in permitidas] or [
+        CATEGORIA_OUTROS
+    ]
 
 
 def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
@@ -190,9 +235,14 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
     if not token or not descricao:
         return None
 
-    cache_key = f"hf_categoria:{_normalizar(descricao).lower()}"
-    cached = cache.get(cache_key)
+    labels = _categorias_despesa_labels()
+    descricao_normalizada = _normalizar(descricao)
+    cache_key = (
+        "hf_categoria:v2:"
+        + hashlib_sha256(descricao_normalizada + "|" + "|".join(labels))
+    )
 
+    cached = cache.get(cache_key)
     if cached:
         return SugestaoCategoria(**cached)
 
@@ -200,8 +250,6 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
         from huggingface_hub import InferenceClient
 
         client = InferenceClient(token=token)
-        labels = _categorias_despesa_labels()
-
         resultado = client.zero_shot_classification(
             descricao,
             candidate_labels=labels,
@@ -213,7 +261,6 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
         )
 
         melhor = resultado[0] if resultado else None
-
         if not melhor:
             return None
 
@@ -228,12 +275,18 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
             else melhor["label"]
         )
 
-        # Uma previsão pouco segura não deve ser apresentada como certa.
-        confianca = "alta" if score >= 0.70 else "baixa"
+        # Não tratar uma pontuação baixa como certeza:
+        # ainda assim, preservar a melhor sugestão para revisão.
+        if label not in labels:
+            logger.warning(
+                "Hugging Face retornou categoria fora da lista permitida: %s",
+                label,
+            )
+            return None
 
         sugestao = SugestaoCategoria(
             nome_categoria=label,
-            confianca=confianca,
+            confianca="alta" if score >= 0.70 else "baixa",
             origem="huggingface",
         )
 
@@ -242,7 +295,6 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
             sugestao.__dict__,
             timeout=60 * 60 * 24 * 7,
         )
-
         return sugestao
 
     except Exception:
@@ -252,53 +304,52 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
         return None
 
 
+def hashlib_sha256(texto: str) -> str:
+    """Gera chave de cache estável para descrição e categorias."""
+    import hashlib
+
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
 def sugerir_categoria(
     descricao: str,
     tipo: str = "despesa",
 ) -> SugestaoCategoria:
-    """Sugere uma categoria para a transação importada."""
+    """Sugere a melhor categoria, indicando quando precisa de revisão."""
+
+    if tipo not in ("receita", "despesa"):
+        tipo = "despesa"
 
     descricao_normalizada = _normalizar(descricao)
 
-    # Primeiro, aplicar regras com identificação explícita do comerciante
-    # ou serviço. Ex.: iFood, Uber, Sanepar e Eletropaulo.
+    # 1. Regras específicas têm prioridade sobre a IA.
     sugestao = _por_regras(descricao, tipo)
-
     if sugestao:
         return sugestao
 
-    # Transferências genéricas não revelam onde o dinheiro foi gasto.
-    # O mesmo vale para pagamentos de fatura, que podem quitar compras
-    # já registradas em outras transações.
+    # 2. Transferências e pagamentos genéricos não revelam a finalidade.
     if _corresponde_a_algum_padrao(
         descricao_normalizada,
         PADROES_TRANSFERENCIA_GENERICA,
-    ):
-        return SugestaoCategoria(
-            nome_categoria="Outros",
-            confianca="baixa",
-            origem="padrao",
-        )
-
-    if _corresponde_a_algum_padrao(
+    ) or _corresponde_a_algum_padrao(
         descricao_normalizada,
         PADROES_BOLETO_GENERICO,
     ):
         return SugestaoCategoria(
-            nome_categoria="Outros",
+            nome_categoria=CATEGORIA_OUTROS,
             confianca="baixa",
             origem="padrao",
         )
 
-    # A IA só é utilizada para despesas sem regra específica.
+    # 3. A IA só classifica despesas. Para receitas sem evidência
+    # explícita, não presumimos que o recebimento seja salário ou renda extra.
     if tipo == "despesa":
         sugestao = _por_huggingface(descricao)
-
         if sugestao:
             return sugestao
 
     return SugestaoCategoria(
-        nome_categoria="Outros",
+        nome_categoria=CATEGORIA_OUTROS,
         confianca="baixa",
         origem="padrao",
     )
