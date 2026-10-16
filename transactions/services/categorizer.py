@@ -1,14 +1,11 @@
 """Categorização automática de transações importadas (UC04 e UC05).
 
-Ordem de classificação:
-1. Regras específicas por descrição.
-2. Hugging Face para despesas sem regra específica.
-3. Melhor sugestão disponível, identificada como baixa confiança,
-   quando não houver evidência suficiente.
-
-As categorias sugeridas respeitam as categorias padrão existentes
-no banco de dados. Não se presume a finalidade de transferências
-apenas pelo banco ou carteira digital utilizados.
+Prioridades:
+1. Aplicar regras locais antes de consultar serviços externos.
+2. Reutilizar categorias e cliente do Hugging Face.
+3. Aproveitar o cache de classificações.
+4. Limitar o tempo de espera da API externa.
+5. Nunca presumir a finalidade de transferências genéricas.
 """
 
 from __future__ import annotations
@@ -17,13 +14,12 @@ import hashlib
 import logging
 import re
 import unicodedata
-from dataclasses import dataclass
+from functools import lru_cache
 
 from django.conf import settings
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
-
 
 CATEGORIA_OUTROS = "Outros"
 CATEGORIA_ALIMENTACAO = "Alimentação/Supermercado"
@@ -51,8 +47,6 @@ CATEGORIAS_RECEITA_PADRAO = [
     "Outros",
 ]
 
-
-# Regras para despesas.
 REGRAS_PALAVRA_CHAVE = [
     (
         r"\bIFOOD\b|\bRAPPI\b|\bPIZZARIA\b|\bRESTAURANTE\b|"
@@ -99,7 +93,6 @@ REGRAS_PALAVRA_CHAVE = [
         r"\bPARQUE\s?DE\s?DIVERSAO\b|\bBOLICHE\b",
         CATEGORIA_LAZER,
     ),
-    # Não há categoria específica de saúde no cadastro padrão.
     (
         r"\bFARMACIA\b|\bDROGARIA\b|\bDROGASIL\b|\bPACHECO\b|"
         r"\bCLINICA\b|\bHOSPITAL\b|\bLABORATORIO\b|"
@@ -108,8 +101,6 @@ REGRAS_PALAVRA_CHAVE = [
     ),
 ]
 
-
-# Regras para receitas identificáveis.
 REGRAS_RECEITA = [
     (
         r"\bSALARIO\b|\bFOLHA\s?DE\s?PAGAMENTO\b|"
@@ -136,7 +127,6 @@ REGRAS_RECEITA = [
     ),
 ]
 
-
 PADROES_TRANSFERENCIA_GENERICA = [
     r"\bTRANSFERENCIA\s+(?:ENVIADA|RECEBIDA)\b",
     r"\bTRANSFERENCIA\s+(?:ENTRE\s+CONTAS|PIX)\b",
@@ -155,22 +145,32 @@ PADROES_BOLETO_GENERICO = [
 ]
 
 
-@dataclass
 class SugestaoCategoria:
-    nome_categoria: str
-    confianca: str
-    origem: str
+    def __init__(
+        self,
+        nome_categoria: str,
+        confianca: str,
+        origem: str,
+    ):
+        self.nome_categoria = nome_categoria
+        self.confianca = confianca
+        self.origem = origem
+
+    def __repr__(self) -> str:
+        return (
+            f"SugestaoCategoria(nome_categoria={self.nome_categoria!r}, "
+            f"confianca={self.confianca!r}, origem={self.origem!r})"
+        )
 
 
 def _normalizar(texto: str) -> str:
     """Remove acentos e padroniza o texto para comparação."""
     texto = unicodedata.normalize("NFKD", texto or "")
-    texto = "".join(
+    return "".join(
         caractere
         for caractere in texto
         if not unicodedata.combining(caractere)
-    )
-    return texto.upper()
+    ).upper()
 
 
 def _corresponde_a_algum_padrao(
@@ -206,8 +206,9 @@ def _por_regras(
     return None
 
 
-def _categorias_despesa_labels() -> list[str]:
-    """Retorna categorias padrão de despesas existentes no banco."""
+@lru_cache(maxsize=1)
+def _categorias_despesa_labels_cache() -> tuple[str, ...]:
+    """Consulta e mantém em memória as categorias padrão existentes."""
     from transactions.models import Category
 
     existentes = list(
@@ -218,12 +219,29 @@ def _categorias_despesa_labels() -> list[str]:
     )
 
     if not existentes:
-        return CATEGORIAS_DESPESA_PADRAO.copy()
+        return tuple(CATEGORIAS_DESPESA_PADRAO)
 
     permitidas = set(CATEGORIAS_DESPESA_PADRAO)
     labels = [nome for nome in existentes if nome in permitidas]
 
-    return labels or [CATEGORIA_OUTROS]
+    return tuple(labels or [CATEGORIA_OUTROS])
+
+
+def _categorias_despesa_labels() -> list[str]:
+    """Retorna categorias sem repetir consultas ao banco."""
+    try:
+        return list(_categorias_despesa_labels_cache())
+    except Exception:
+        logger.exception("Não foi possível carregar categorias padrão.")
+        return CATEGORIAS_DESPESA_PADRAO.copy()
+
+
+@lru_cache(maxsize=4)
+def _obter_cliente_huggingface(token: str, timeout: float):
+    """Reutiliza o cliente da API em vez de recriá-lo por transação."""
+    from huggingface_hub import InferenceClient
+
+    return InferenceClient(token=token, timeout=timeout)
 
 
 def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
@@ -234,10 +252,15 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
 
     labels = _categorias_despesa_labels()
     descricao_normalizada = _normalizar(descricao)
+
     cache_key = (
-        "hf_categoria:v2:"
+        "hf_categoria:v3:"
         + hashlib.sha256(
-            (descricao_normalizada + "|" + "|".join(labels)).encode("utf-8")
+            (
+                descricao_normalizada
+                + "|"
+                + "|".join(labels)
+            ).encode("utf-8")
         ).hexdigest()
     )
 
@@ -245,11 +268,15 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
     if cached:
         return SugestaoCategoria(**cached)
 
-    try:
-        from huggingface_hub import InferenceClient
+    timeout = float(
+        getattr(settings, "HUGGINGFACE_TIMEOUT_SECONDS", 5)
+    )
+    timeout = max(1.0, min(timeout, 15.0))
 
-        client = InferenceClient(token=token)
-        resultado = client.zero_shot_classification(
+    try:
+        cliente = _obter_cliente_huggingface(token, timeout)
+
+        resultado = cliente.zero_shot_classification(
             descricao,
             candidate_labels=labels,
             model=getattr(
@@ -289,14 +316,21 @@ def _por_huggingface(descricao: str) -> SugestaoCategoria | None:
 
         cache.set(
             cache_key,
-            sugestao.__dict__,
+            {
+                "nome_categoria": sugestao.nome_categoria,
+                "confianca": sugestao.confianca,
+                "origem": sugestao.origem,
+            },
             timeout=60 * 60 * 24 * 7,
         )
+
         return sugestao
 
     except Exception:
-        logger.exception(
-            "Falha ao classificar transação via Hugging Face Inference API"
+        logger.warning(
+            "Falha ao classificar transação via Hugging Face. "
+            "A importação continuará sem a classificação por IA.",
+            exc_info=True,
         )
         return None
 
@@ -312,18 +346,21 @@ def sugerir_categoria(
 
     descricao_normalizada = _normalizar(descricao)
 
-    # 1. Regras específicas têm prioridade.
+    # 1. Regras locais: não precisam de chamadas externas.
     sugestao = _por_regras(descricao, tipo)
     if sugestao:
         return sugestao
 
     # 2. Transferências e pagamentos genéricos não revelam a finalidade.
-    if _corresponde_a_algum_padrao(
-        descricao_normalizada,
-        PADROES_TRANSFERENCIA_GENERICA,
-    ) or _corresponde_a_algum_padrao(
-        descricao_normalizada,
-        PADROES_BOLETO_GENERICO,
+    if (
+        _corresponde_a_algum_padrao(
+            descricao_normalizada,
+            PADROES_TRANSFERENCIA_GENERICA,
+        )
+        or _corresponde_a_algum_padrao(
+            descricao_normalizada,
+            PADROES_BOLETO_GENERICO,
+        )
     ):
         return SugestaoCategoria(
             nome_categoria=CATEGORIA_OUTROS,
@@ -331,7 +368,7 @@ def sugerir_categoria(
             origem="padrao",
         )
 
-    # 3. A IA classifica despesas sem regra específica.
+    # 3. A IA é usada apenas para despesas sem regra específica.
     if tipo == "despesa":
         sugestao = _por_huggingface(descricao)
         if sugestao:
