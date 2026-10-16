@@ -12,7 +12,13 @@ from django.shortcuts import redirect, render
 
 from debts.models import Debt
 from goals.models import Goal
-from transactions.models import Category, Transaction
+from transactions.models import (
+    Category,
+    CategoryBudget,
+    ImportBatch,
+    RecurringBill,
+    Transaction,
+)
 
 from .forms import (
     CadastroForm,
@@ -239,25 +245,51 @@ def zerar_dados_usuario(request):
     """Apaga os dados financeiros do usuário autenticado."""
 
     if request.method == "POST":
+        usuario = request.user
+
         with transaction.atomic():
+            # 1. Apaga as transações do usuário.
+            # Os pagamentos vinculados deixam de apontar para elas.
             Transaction.objects.filter(
-                usuario=request.user
+                usuario=usuario
             ).delete()
 
+            # 2. Apaga as contas fixas.
+            # Os pagamentos de cada conta fixa são excluídos em cascata,
+            # evitando que pagamentos antigos sejam recriados depois.
+            RecurringBill.objects.filter(
+                usuario=usuario
+            ).delete()
+
+            # 3. Apaga os registros de importação financeira.
+            ImportBatch.objects.filter(
+                usuario=usuario
+            ).delete()
+
+            # 4. Apaga dívidas e metas financeiras.
             Debt.objects.filter(
-                usuario=request.user
+                usuario=usuario
             ).delete()
 
             Goal.objects.filter(
-                usuario=request.user
+                usuario=usuario
             ).delete()
 
+            # 5. Apaga os orçamentos por categoria.
+            CategoryBudget.objects.filter(
+                usuario=usuario
+            ).delete()
+
+            # 6. Apaga as categorias personalizadas do usuário.
+            # As contas fixas já foram excluídas para evitar conflitos
+            # com categorias protegidas por relacionamentos.
             Category.objects.filter(
-                usuario=request.user
+                usuario=usuario
             ).delete()
 
-            if hasattr(request.user, "notificacoes"):
-                request.user.notificacoes.all().delete()
+            # 7. Apaga as notificações do usuário, se o relacionamento existir.
+            if hasattr(usuario, "notificacoes"):
+                usuario.notificacoes.all().delete()
 
         messages.success(
             request,
