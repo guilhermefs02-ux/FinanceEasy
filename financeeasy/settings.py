@@ -12,7 +12,8 @@ import dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Carrega variáveis de ambiente do arquivo .env (veja .env.example)
+# Carrega variáveis de ambiente do arquivo .env local.
+# No Render, as variáveis podem ser configuradas no painel do serviço.
 dotenv.load_dotenv(BASE_DIR / ".env")
 
 
@@ -23,13 +24,15 @@ def env_bool(name, default=False):
     return value.strip().lower() in ("1", "true", "yes", "on")
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# ---------------------------------------------------------------------------
+# Configurações gerais e segurança
+# ---------------------------------------------------------------------------
+
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
     "django-insecure-financeeasy-dev-key-troque-em-producao",
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [
@@ -41,7 +44,6 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
-# Necessário quando o app é acessado por trás de um túnel/proxy HTTPS.
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.getenv(
@@ -56,29 +58,22 @@ CSRF_TRUSTED_ORIGINS = [
 # Limites de upload e importação de arquivos
 # ---------------------------------------------------------------------------
 
-# Tamanho máximo permitido por arquivo: 10 MB.
-# Pode ser alterado pela variável de ambiente DJANGO_MAX_UPLOAD_SIZE_MB.
 MAX_UPLOAD_SIZE_MB = int(
     os.getenv("DJANGO_MAX_UPLOAD_SIZE_MB", "10")
 )
-
 MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
-# Limite do corpo completo da requisição HTTP: 12 MB.
-# Deve ser superior ao limite individual para permitir multipart/form-data.
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(
     os.getenv("DJANGO_MAX_REQUEST_SIZE_MB", "12")
 ) * 1024 * 1024
 
-# Número máximo de campos de formulário aceitos em uma requisição.
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
-
-# Arquivos acima de aproximadamente 2,5 MB são encaminhados
-# para arquivo temporário, reduzindo o uso de memória.
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
 
 
-# Application definition
+# ---------------------------------------------------------------------------
+# Aplicativos
+# ---------------------------------------------------------------------------
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -88,7 +83,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # Apps do FinanceEasy
     "core",
     "accounts",
     "transactions",
@@ -133,11 +127,8 @@ WSGI_APPLICATION = "financeeasy.wsgi.application"
 
 
 # ---------------------------------------------------------------------------
-# Database
+# Banco de dados
 # ---------------------------------------------------------------------------
-
-# Usa PostgreSQL quando DATABASE_URL estiver configurada.
-# Sem essa variável, mantém SQLite para desenvolvimento local.
 
 _db_path = os.getenv("DJANGO_DB_PATH")
 _database_url = os.getenv("DATABASE_URL")
@@ -165,12 +156,12 @@ else:
     }
 
 
-# Usuário customizado (login por e-mail — RF02)
+# Usuário customizado: login por e-mail.
 AUTH_USER_MODEL = "accounts.User"
 
 
 # ---------------------------------------------------------------------------
-# Segurança de senhas
+# Validação de senhas
 # ---------------------------------------------------------------------------
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -213,7 +204,7 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 
 
 # ---------------------------------------------------------------------------
-# Internationalization
+# Internacionalização
 # ---------------------------------------------------------------------------
 
 LANGUAGE_CODE = "pt-br"
@@ -223,7 +214,7 @@ USE_TZ = True
 
 
 # ---------------------------------------------------------------------------
-# Static files e arquivos enviados
+# Arquivos estáticos e enviados
 # ---------------------------------------------------------------------------
 
 STATIC_URL = "static/"
@@ -237,8 +228,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # ---------------------------------------------------------------------------
-# Cache simples em memória — usado para não estourar a cota diária
-# da API gratuita da HG Brasil.
+# Cache
 # ---------------------------------------------------------------------------
 
 CACHES = {
@@ -260,11 +250,24 @@ HGBRASIL_CACHE_TTL_SECONDS = int(
     os.getenv("HGBRASIL_CACHE_TTL_SECONDS", "900")
 )
 
-# Hugging Face Inference API
-HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "")
-HUGGINGFACE_ZERO_SHOT_MODEL = os.getenv(
-    "HUGGINGFACE_ZERO_SHOT_MODEL",
-    "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
+# Groq API — categorização automática de despesas.
+# Configure GROQ_API_KEY nas variáveis de ambiente do Render.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "openai/gpt-oss-20b",
+)
+
+try:
+    GROQ_TIMEOUT_SECONDS = float(
+        os.getenv("GROQ_TIMEOUT_SECONDS", "8")
+    )
+except (TypeError, ValueError):
+    GROQ_TIMEOUT_SECONDS = 8.0
+
+GROQ_TIMEOUT_SECONDS = max(
+    1.0,
+    min(GROQ_TIMEOUT_SECONDS, 20.0),
 )
 
 
