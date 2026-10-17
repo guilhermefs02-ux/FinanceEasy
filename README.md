@@ -1,6 +1,6 @@
 # FinanceEasy
 
-Aplicativo web de gestão financeira pessoal desenvolvido com **Python e Django**, voltado especialmente para pessoas que precisam organizar suas contas, controlar dívidas, acompanhar seus objetivos financeiros e entender quanto dinheiro podem utilizar com segurança até o final do mês.
+Aplicativo web de gestão financeira pessoal desenvolvido com **Python e Django**, voltado especialmente para pessoas que precisam organizar suas contas, controlar dívidas, acompanhar objetivos financeiros e entender quanto dinheiro podem utilizar com segurança.
 
 O projeto tem como persona principal o **“Equilibrista Sobrecarregado”**: uma pessoa que enfrenta dificuldades para organizar as finanças, está preocupada com vencimentos e juros por atraso e precisa de informações claras para tomar decisões financeiras melhores.
 
@@ -10,270 +10,579 @@ O FinanceEasy prioriza a organização financeira sem julgamentos, a prevenção
 
 **Hospedagem:** Render
 
+**Banco de dados de produção:** Neon PostgreSQL
+
 **Modelo de desenvolvimento:** Django MTV (Model, Template, View)
 
 ---
 
 ## 1. Tecnologias utilizadas
 
-- **Python:** linguagem principal.
-- **Django:** framework web, utilizando a arquitetura MTV.
-- **HTML5, CSS3 e JavaScript:** estrutura, estilos e interatividade.
-- **Bootstrap 5:** componentes e interface responsiva.
-- **PostgreSQL:** banco de dados utilizado em produção, hospedado no Neon.
-- **Neon:** serviço de banco de dados PostgreSQL na nuvem.
-- **Render:** hospedagem da aplicação web e execução do deploy.
-- **GitHub:** repositório do código-fonte e controle de versões.
-- **HG Brasil Finance API:** integração para informações financeiras e cotações, conforme configuração.
-- **Hugging Face Inference API:** integração para auxiliar na categorização de despesas importadas, conforme configuração.
+- **Python** — linguagem principal.
+- **Django 5.2** — framework web utilizado na aplicação.
+- **HTML5, CSS3 e JavaScript** — estrutura, estilos e interatividade.
+- **Bootstrap 5** — componentes e interface responsiva.
+- **PostgreSQL** — banco de dados utilizado em produção.
+- **Neon** — serviço de banco de dados PostgreSQL utilizado pelo ambiente de produção.
+- **Render** — hospedagem e execução da aplicação.
+- **GitHub** — repositório do código-fonte e controle de versões.
+- **HG Brasil Finance API** — integração utilizada para informações financeiras e cotações.
+- **SQLite** — pode ser utilizado no ambiente local conforme a configuração do projeto.
 
 ### Arquitetura de publicação
 
-O fluxo de funcionamento do FinanceEasy é:
+O fluxo atual do FinanceEasy é:
 
-1. **GitHub:** armazena o código-fonte e recebe as alterações.
-2. **Render:** publica e executa a aplicação Django.
-3. **Neon PostgreSQL:** armazena os dados persistentes da aplicação em produção.
+```text
+GitHub
+   ↓
+Render
+   ↓
+Django
+   ↓
+Neon PostgreSQL
+```
 
-As credenciais e os endereços de conexão são configurados por variáveis de ambiente. Senhas, tokens e URLs de conexão que contenham credenciais não devem ser publicados no repositório.
+O **GitHub** mantém o código-fonte.
 
-O SQLite pode ser utilizado em um ambiente local somente se a configuração do projeto permitir; ele não deve ser apresentado como o banco principal de produção.
+O **Render** executa e publica a aplicação Django.
 
-### 2.2. Painel financeiro
+O **Neon** armazena os dados persistentes da aplicação em produção.
 
-O painel principal reúne informações para facilitar a compreensão da situação financeira do usuário.
+As informações sensíveis, como senha do banco, chaves de API e outras credenciais, devem permanecer nas variáveis de ambiente e **nunca devem ser publicadas no GitHub**.
 
-Recursos:
+---
 
-- Visualização de indicadores financeiros.
-- Acompanhamento de receitas e despesas.
-- Consulta por competência mensal.
-- Organização das despesas por categoria.
-- Exibição da **Sobra Segura**, considerando o saldo disponível e os valores previstos para os próximos sete dias.
-- Modo de privacidade para ocultar valores financeiros na interface.
-- Acompanhamento de objetivos financeiros e respectivos progressos.
-- Acesso às funcionalidades de receitas, despesas, contas fixas, dívidas e metas.
+# 2. Funcionalidades implementadas
 
-A Sobra Segura deve continuar considerando os vencimentos futuros relevantes para o cálculo. A Central de Avisos pode ser acessada separadamente, sem precisar ocupar espaço no painel principal.
+## 2.1. Cadastro e autenticação
 
-### 2.3. Receitas e despesas
+O módulo `accounts` é responsável pelo gerenciamento dos usuários.
 
-O módulo de transações organiza as movimentações financeiras registradas no sistema.
+Funcionalidades:
 
-Recursos previstos e documentados:
+- Cadastro de usuário.
+- Login.
+- Logout.
+- Recuperação de senha por código.
+- Perfil do usuário.
+- Dados complementares do usuário.
+- Controle de usuário ativo.
+- Usuário administrador do Django.
+- Proteção das páginas para usuários autenticados.
 
-- Registro de receitas.
-- Registro de despesas.
-- Associação das movimentações a categorias.
-- Consulta e filtragem do extrato.
-- Importação de arquivos financeiros nos formatos suportados pelos respectivos parsers.
-- Apoio à categorização das despesas importadas.
-- Conciliação e revisão de transações, conforme os fluxos implementados.
+O usuário utiliza o **e-mail como identificador de acesso**, conforme a implementação atual do modelo personalizado de usuário.
 
-A disponibilidade de cada formato de importação depende do parser correspondente e de sua compatibilidade com o arquivo fornecido.
+---
 
-### 2.4. Importação de extratos
+## 2.2. Painel financeiro
 
-O projeto possui serviços para leitura e interpretação de arquivos financeiros.
+O painel principal é o centro de acompanhamento financeiro do usuário.
 
-Arquivos contemplados na estrutura do projeto:
+Funcionalidades implementadas:
+
+- Saudação personalizada.
+- Seleção da competência mensal.
+- Navegação entre meses.
+- Seleção de ano.
+- Total de receitas da competência.
+- Total de despesas realizadas.
+- Saldo disponível acumulado.
+- Detalhamento das receitas.
+- Detalhamento das despesas.
+- Despesas agrupadas por categoria.
+- Visualização das principais categorias de despesas.
+- **Sobra Segura**.
+- Central de Avisos.
+- Acompanhamento de objetivos financeiros.
+- Total acumulado nos objetivos.
+- Progresso individual dos objetivos.
+- Modo de privacidade.
+
+### Sobra Segura
+
+A Sobra Segura foi criada para responder uma pergunta importante:
+
+> Quanto dinheiro realmente posso considerar disponível depois de levar em conta os compromissos próximos?
+
+O cálculo considera o saldo disponível e os compromissos financeiros previstos para os próximos dias.
+
+O objetivo é evitar que o usuário considere como disponível um dinheiro que já será necessário para pagar uma conta ou parcela.
+
+Quando o resultado é negativo, o painel apresenta um alerta visual indicando que as obrigações previstas superam o saldo disponível.
+
+---
+
+## 2.3. Central de Avisos
+
+A aplicação possui uma **Central de Avisos** destinada ao acompanhamento de compromissos financeiros.
+
+Ela apresenta:
+
+- Contas recorrentes vencidas.
+- Contas recorrentes próximas do vencimento.
+- Parcelas de dívidas pendentes.
+- Quantidade total de pendências.
+- Quantidade de vencimentos atrasados.
+- Quantidade de vencimentos nos próximos 7 dias.
+- Data de vencimento.
+- Valor da obrigação.
+- Categoria da conta quando disponível.
+- Identificação do tipo de compromisso.
+
+As contas recorrentes podem ser marcadas como **pagas diretamente pela Central de Avisos** quando existe um pagamento correspondente.
+
+A Central de Avisos também possui uma página própria, permitindo consultar os avisos sem sobrecarregar o painel principal.
+
+---
+
+## 2.4. Contas recorrentes
+
+O módulo de transações possui suporte para contas recorrentes.
+
+As contas podem possuir:
+
+- Nome do serviço.
+- Valor.
+- Periodicidade.
+- Dia de vencimento.
+- Categoria.
+- Usuário responsável.
+- Situação ativa/inativa.
+- Mês específico de vencimento quando aplicável.
+
+Periodicidades utilizadas pelo sistema incluem:
+
+- Mensal.
+- Anual.
+
+O sistema também trabalha com os registros de pagamento associados às contas recorrentes.
+
+### Pagamento de contas
+
+Uma conta recorrente pode gerar um registro de pagamento.
+
+O sistema permite acompanhar se determinado compromisso foi pago ou permanece pendente.
+
+Ao marcar uma conta como paga, o fluxo existente utiliza o registro de pagamento correspondente, preservando a relação entre a conta recorrente e seu pagamento.
+
+---
+
+## 2.5. Receitas
+
+O FinanceEasy permite registrar receitas manualmente.
+
+Cada lançamento pode conter informações como:
+
+- Data.
+- Descrição.
+- Valor.
+- Categoria.
+- Usuário.
+
+As receitas confirmadas são utilizadas nos indicadores financeiros do painel.
+
+Também podem ser consultadas posteriormente no extrato.
+
+---
+
+## 2.6. Despesas
+
+O sistema permite registrar despesas manualmente.
+
+As despesas podem possuir:
+
+- Data.
+- Descrição.
+- Valor.
+- Categoria.
+- Usuário.
+- Informações relacionadas à recorrência quando aplicável.
+
+As despesas confirmadas são utilizadas nos cálculos do painel e nos relatórios por categoria.
+
+---
+
+## 2.7. Categorias
+
+O módulo `transactions` possui um sistema próprio de categorias.
+
+As categorias podem possuir:
+
+- Nome.
+- Ícone.
+- Cor.
+- Usuário associado quando aplicável.
+
+O projeto possui categorias padrão utilizadas para organizar as movimentações financeiras.
+
+Também existe suporte a categorias relacionadas a despesas e dívidas.
+
+---
+
+## 2.8. Orçamentos por categoria
+
+O FinanceEasy possui suporte a **limites de orçamento por categoria**.
+
+O usuário pode definir um limite para determinada categoria e acompanhar sua utilização.
+
+O projeto também possui uma rotina de alertas de orçamento localizada em:
+
+```text
+core/services/budget_alerts.py
+```
+
+A finalidade é identificar situações em que o usuário está se aproximando do limite definido para determinada categoria.
+
+---
+
+## 2.9. Importação de extratos
+
+O sistema possui uma área específica para importação de extratos.
+
+Localização:
+
+```text
+transactions/services/import_parser.py
+```
+
+A estrutura atual contempla processamento de:
 
 - OFX.
 - CSV.
 - PDF.
 
-A leitura de PDF pode depender do formato do extrato bancário e não garante reconhecimento de todos os layouts.
+Após a importação, as transações podem passar pelo processo de conciliação antes de serem definitivamente utilizadas no controle financeiro.
 
-A importação e a categorização são etapas distintas: quando uma categoria não é identificada automaticamente, a transação pode exigir revisão manual.
+### Conciliação
 
-### 2.5. Categorização de despesas
+A tela de conciliação permite revisar as transações importadas e confirmar as informações antes de incorporá-las ao controle financeiro.
 
-A categorização auxilia na organização das movimentações financeiras.
-
-O projeto contempla:
-
-- Regras de identificação por palavras-chave.
-- Sugestão de categorias para transações importadas.
-- Integração com a Hugging Face Inference API, quando configurada.
-- Revisão manual de despesas cuja classificação não seja identificada corretamente.
-
-A classificação automática deve ser tratada como uma sugestão que pode precisar de correção pelo usuário.
-
-### 2.6. Contas fixas e pagamentos
-
-O módulo de contas fixas permite acompanhar compromissos financeiros recorrentes.
-
-Recursos trabalhados no projeto:
-
-- Cadastro e acompanhamento de contas fixas.
-- Controle dos vencimentos.
-- Registro do pagamento de contas.
-- Integração dos pagamentos com as despesas financeiras.
-- Recuperação e vinculação de despesas históricas relacionadas a pagamentos de contas fixas, melhoria confirmada após deploy em outubro de 2026.
-- Utilização dos vencimentos no cálculo da Sobra Segura e na Central de Avisos.
-
-**Regra importante:** o registro do pagamento e a despesa financeira correspondente precisam permanecer coerentes, evitando duplicidade ou perda de lançamentos históricos.
-
-### 2.7. Dívidas, cartões e parcelamentos
-
-O módulo de dívidas organiza os compromissos financeiros parcelados.
-
-A estrutura do projeto contempla:
-
-- Cadastro e acompanhamento de dívidas.
-- Organização de cartões e parcelamentos, conforme os modelos implementados.
-- Acompanhamento das parcelas.
-- Identificação de parcelas vencidas ou próximas do vencimento.
-- Consideração dos compromissos financeiros pertinentes nos avisos e indicadores.
-
-A baixa automática ou manual de parcelas deve respeitar as regras específicas do módulo de dívidas, sem pressupor que todas as ações disponíveis para contas fixas também estejam disponíveis para parcelas.
-
-### 2.8. Metas e reservas financeiras
-
-O módulo de objetivos permite acompanhar a evolução das metas financeiras.
-
-A documentação do projeto contempla uma reserva de segurança e objetivos de economia com contribuições de pequenos valores.
-
-Recursos importantes para a evolução do módulo:
-
-- Cadastro e acompanhamento dos objetivos.
-- Registro do progresso em direção ao valor pretendido.
-- Visualização dos valores acumulados e restantes, conforme os campos disponíveis.
-- Acompanhamento do prazo e da conclusão dos objetivos.
-- Mensagem de conclusão da meta.
-- Regras de permanência e arquivamento de objetivos concluídos.
-
-**Regra de experiência do usuário:** a conclusão de um objetivo deve ser comunicada claramente. Quando houver prazo de permanência antes do arquivamento, esse comportamento precisa ser preservado, sem apagar indevidamente o histórico da meta.
-
-### 2.9. Central de Avisos
-
-A Central de Avisos é uma página própria para consultar compromissos financeiros que precisam de atenção.
-
-**Rota da página:** `/painel/avisos/`
-
-A página está organizada em duas seções:
-
-- **Contas e parcelas vencidas:** compromissos que já passaram do vencimento e precisam de atenção.
-- **A vencer nos próximos sete dias:** compromissos com vencimento próximo.
-
-A interface apresenta indicadores de resumo:
-
-- Total de pendências.
-- Quantidade de vencimentos atrasados.
-- Quantidade de vencimentos próximos.
-
-Também contempla:
-
-- Nome do compromisso.
-- Tipo de compromisso.
-- Data de vencimento.
-- Valor, respeitando o modo de privacidade.
-- Identificação visual de itens vencidos e pendentes.
-- Acesso de retorno ao painel principal.
-- Botão verde **“Marcar como paga”** para contas fixas elegíveis que ainda não estejam pagas.
-
-O botão de pagamento utiliza a rota Django `dashboard:marcar_conta_paga` e envia a solicitação por POST com proteção CSRF.
-
-O botão é disponibilizado para contas fixas que possuam o registro de pagamento correspondente e ainda estejam pendentes. A presença do botão não significa que todas as parcelas de dívidas possam ser quitadas diretamente nessa página.
-
-A Central de Avisos permanece acessível pela navegação do sistema, mesmo sem aparecer como uma seção do painel principal.
-
-O contador vermelho da navegação deve continuar indicando a quantidade de avisos conforme a regra implementada no sistema.
-
-### 2.10. Sobra Segura e vencimentos
-
-A Sobra Segura busca oferecer uma referência prudente do dinheiro disponível ao longo do mês.
-
-O cálculo documentado utiliza o saldo disponível e desconta os compromissos financeiros previstos para os próximos sete dias.
-
-Esse indicador depende da consistência dos dados de receitas, despesas, contas fixas e vencimentos.
-
-Alterações na Central de Avisos não devem remover a lógica de cálculo da Sobra Segura nem eliminar os dados utilizados por ela.
-
-### 2.11. Modo de privacidade
-
-O modo de privacidade permite ocultar valores financeiros na interface.
-
-O recurso deve ser respeitado nas telas que exibem informações monetárias e deve ser considerado durante a implementação de novos componentes.
-
-A ocultação visual de valores não substitui as medidas de segurança e autorização aplicadas aos dados financeiros.
+Esse fluxo é importante para evitar que uma importação bancária gere lançamentos incorretos ou duplicados.
 
 ---
 
-## 3. Estrutura do projeto
+## 2.10. Categorização de despesas importadas
 
-A estrutura abaixo representa a organização principal documentada do código-fonte. Os nomes e caminhos devem ser conferidos com a versão atual da branch `main`.
+O projeto possui um serviço específico para categorização:
+
+```text
+transactions/services/categorizer.py
+```
+
+A categorização pode utilizar regras baseadas nas informações da própria transação para identificar despesas conhecidas.
+
+Exemplos de estabelecimentos ou termos reconhecíveis podem ser associados automaticamente às respectivas categorias.
+
+Quando uma transação não é reconhecida, ela pode permanecer disponível para classificação/revisão pelo usuário.
+
+### Observação sobre IA externa
+
+A integração com a **Hugging Face Inference API** fazia parte de uma versão anterior do projeto.
+
+Ela **não deve ser considerada uma dependência obrigatória do FinanceEasy atual**.
+
+A categorização local por regras deve permanecer como mecanismo principal para evitar que o funcionamento básico da importação dependa de uma API externa com limites, créditos ou cobrança.
+
+Caso uma nova solução de inteligência artificial seja adicionada futuramente, ela deverá ser tratada como uma integração opcional e não poderá comprometer o funcionamento básico do sistema.
+
+---
+
+## 2.11. Dívidas
+
+O módulo `debts` é responsável pelo controle de dívidas.
+
+Funcionalidades:
+
+- Cadastro de dívidas.
+- Controle de valor.
+- Parcelamento.
+- Controle de parcelas.
+- Registro de pagamentos.
+- Acompanhamento das parcelas pendentes.
+- Visualização da fatura quando aplicável.
+- Controle de cartões e parcelamentos conforme a implementação disponível.
+
+Arquivos principais:
+
+```text
+debts/models.py
+debts/forms.py
+debts/views.py
+debts/services/credit_card.py
+```
+
+---
+
+## 2.12. Objetivos financeiros
+
+O módulo `goals` é responsável pelo gerenciamento dos objetivos financeiros.
+
+O sistema permite criar objetivos para representar valores que o usuário deseja acumular.
+
+Exemplos:
+
+- Reserva de emergência.
+- Colchão financeiro.
+- Viagem.
+- Terreno.
+- Compra de um bem.
+- Outros objetivos pessoais.
+
+Funcionalidades:
+
+- Criação de objetivos.
+- Edição.
+- Acompanhamento do valor acumulado.
+- Definição de valor-alvo.
+- Cálculo do percentual concluído.
+- Visualização do valor restante.
+- Registro de contribuições.
+- Registro de retiradas.
+- Histórico.
+- Arquivamento de objetivos concluídos.
+- Reserva/colchão de segurança.
+
+### Colchão financeiro
+
+O projeto possui tratamento específico para o objetivo padrão de reserva de segurança.
+
+Quando um objetivo é concluído, ele pode permanecer disponível por determinado período antes de ser arquivado, conforme a lógica implementada no sistema.
+
+O histórico das contribuições e retiradas deve ser preservado.
+
+---
+
+## 2.13. Modo de privacidade
+
+O FinanceEasy possui um modo de privacidade para ocultar valores financeiros apresentados na interface.
+
+Quando ativado, valores sensíveis podem ser substituídos visualmente por caracteres de ocultação.
+
+O objetivo é permitir que o usuário utilize o sistema em locais públicos sem deixar valores financeiros expostos na tela.
+
+Novos componentes que apresentem informações financeiras devem respeitar essa regra.
+
+---
+
+## 2.14. Extrato
+
+O sistema possui uma área de extrato para consulta dos lançamentos.
+
+Funcionalidades disponíveis incluem:
+
+- Visualização das transações.
+- Filtros.
+- Consulta de receitas.
+- Consulta de despesas.
+- Categorias.
+- Datas.
+- Informações dos lançamentos.
+- Consulta de lançamentos futuros conforme o módulo correspondente.
+
+---
+
+## 2.15. Recorrências
+
+O projeto possui recursos relacionados ao gerenciamento de lançamentos recorrentes.
+
+Arquivos relacionados:
+
+```text
+transactions/services/recurrency.py
+transactions/services/recurring_bills.py
+```
+
+O sistema trabalha com contas recorrentes e seus pagamentos, permitindo separar o compromisso previsto do pagamento efetivamente realizado.
+
+---
+
+## 2.16. Assinaturas
+
+O módulo de transações possui uma tela específica para acompanhamento de assinaturas:
+
+```text
+templates/transactions/assinaturas.html
+```
+
+Esse recurso permite organizar compromissos recorrentes relacionados a serviços e assinaturas.
+
+---
+
+## 2.17. Comparativo financeiro
+
+O projeto possui uma tela de comparativo financeiro:
+
+```text
+templates/transactions/comparativo.html
+```
+
+O objetivo é permitir a análise das movimentações financeiras em diferentes períodos.
+
+---
+
+# 3. Estrutura do projeto
 
 ```text
 FinanceEasy/
+│
 ├── accounts/
-│   └── Cadastro, autenticação e contas de usuários
+│   ├── models.py
+│   ├── forms.py
+│   ├── views.py
+│   ├── urls.py
+│   └── migrations/
+│
 ├── core/
+│   ├── models.py
+│   ├── views.py
+│   ├── middleware.py
+│   ├── context_processors.py
 │   ├── services/
-│   │   ├── due_date_scan.py
-│   │   └── budget_alerts.py
-│   ├── management/
-│   │   └── commands/
-│   │       └── varredura_vencimentos.py
-│   └── Infraestrutura e recursos compartilhados
+│   │   ├── budget_alerts.py
+│   │   └── due_date_scan.py
+│   └── management/
+│       └── commands/
+│           └── varredura_vencimentos.py
+│
 ├── dashboard/
 │   ├── views.py
 │   ├── urls.py
-│   ├── services/
-│   │   └── hgbrasil.py
-│   └── templates/
-│       └── dashboard/
-│           ├── painel.html
-│           └── avisos.html
+│   └── services/
+│       └── hgbrasil.py
+│
 ├── debts/
-│   └── Dívidas, cartões e parcelas
+│   ├── models.py
+│   ├── forms.py
+│   ├── views.py
+│   ├── urls.py
+│   └── services/
+│       └── credit_card.py
+│
 ├── goals/
-│   └── Metas e reservas financeiras
+│   ├── models.py
+│   ├── forms.py
+│   ├── views.py
+│   ├── urls.py
+│   └── migrations/
+│
 ├── transactions/
+│   ├── models.py
+│   ├── forms.py
+│   ├── views.py
+│   ├── urls.py
 │   ├── services/
+│   │   ├── categorizer.py
 │   │   ├── import_parser.py
-│   │   └── categorizer.py
-│   └── Receitas, despesas, extrato e importações
+│   │   ├── recurrency.py
+│   │   └── recurring_bills.py
+│   └── migrations/
+│
 ├── financeeasy/
 │   ├── settings.py
-│   └── urls.py
+│   ├── urls.py
+│   ├── asgi.py
+│   └── wsgi.py
+│
 ├── templates/
-│   └── Templates compartilhados
 ├── static/
-│   └── Arquivos CSS e JavaScript
+│
 ├── manage.py
 ├── requirements.txt
-├── .env.example
 ├── smoke_test.py
+├── ENDPOINTS.md
+├── .env.example
 └── README.md
 ```
 
-A árvore é ilustrativa: alguns serviços, diretórios e templates podem ter sido reorganizados ao longo das alterações. Para confirmar o caminho exato de um arquivo, consulte a estrutura atual no GitHub.
+---
+
+# 4. Banco de dados
+
+O ambiente de produção utiliza **PostgreSQL hospedado no Neon**.
+
+Entre as tabelas atualmente existentes estão:
+
+```text
+accounts_passwordresetcode
+accounts_user
+accounts_user_groups
+accounts_user_user_permissions
+
+auth_group
+auth_group_permissions
+auth_permission
+
+core_notification
+
+debts_debt
+debts_debtpayment
+
+django_admin_log
+django_content_type
+django_migrations
+django_session
+
+goals_goal
+goals_goalcontribution
+goals_goalwithdrawal
+
+transactions_category
+transactions_categorybudget
+transactions_importbatch
+transactions_recurringbill
+transactions_recurringbillpayment
+transactions_transaction
+```
+
+As tabelas são criadas e atualizadas pelas migrações do Django.
+
+### Regra importante
+
+O banco de produção do Neon contém dados reais da aplicação.
+
+**Não apagar, recriar ou limpar o banco de produção para corrigir problemas de desenvolvimento.**
+
+Alterações estruturais devem ser realizadas por meio de migrações do Django:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+Antes de executar migrações em produção, é recomendável verificar o código, o histórico de migrações e o estado atual do banco.
 
 ---
 
-## 4. Ambiente de desenvolvimento
+# 5. Configuração local
 
-### 4.1. Pré-requisitos
+## 5.1. Pré-requisitos
 
-- Python compatível com a versão do Django e das dependências do projeto.
+Recomenda-se:
+
+- Python 3.13.
 - pip.
-- Git, caso deseje clonar o repositório.
-- Editor de código, como o Visual Studio Code.
+- Git.
+- Visual Studio Code ou outro editor.
+- Acesso ao repositório GitHub.
 
-Para o ambiente local, recomenda-se utilizar uma versão estável do Python compatível com todas as dependências do `requirements.txt`.
+O projeto possui dependências específicas no `requirements.txt`.
 
-### 4.2. Clonar o projeto
+---
+
+## 5.2. Clonar o projeto
 
 ```bash
 git clone https://github.com/guilhermefs02-ux/FinanceEasy.git
 cd FinanceEasy
 ```
 
-### 4.3. Criar o ambiente virtual
+---
+
+## 5.3. Criar ambiente virtual
 
 ```bash
-python -m venv .venv
+py -3.13 -m venv .venv
 ```
 
 No Windows PowerShell:
@@ -282,261 +591,377 @@ No Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 ```
 
-Se o PowerShell bloquear a ativação por política de execução, uma alternativa temporária para a sessão atual é:
+Caso o PowerShell bloqueie a execução:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
 ```
 
-No Windows CMD:
+Depois confirme:
 
-```bat
-.venv\Scripts\activate.bat
+```powershell
+python --version
 ```
 
-No Linux ou macOS:
+O Python utilizado pelo ambiente virtual deve ser compatível com as dependências do projeto.
 
-```bash
-source .venv/bin/activate
-```
+---
 
-### 4.4. Instalar as dependências
+## 5.4. Instalar dependências
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Utilize o interpretador associado ao ambiente virtual para evitar erros de módulos não encontrados.
+---
 
-### 4.5. Configurar as variáveis de ambiente
+## 5.5. Configurar `.env`
 
-Crie um arquivo `.env` a partir do exemplo, se esse arquivo estiver disponível e for compatível com a configuração atual.
+Copie o arquivo:
 
-PowerShell:
+```text
+.env.example
+```
+
+para:
+
+```text
+.env
+```
+
+No PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Linux ou macOS:
+O `.env` deve conter somente configurações necessárias ao ambiente.
 
-```bash
-cp .env.example .env
-```
+**Nunca publique o `.env` no GitHub.**
 
-Preencha somente as variáveis necessárias para o ambiente. Não publique chaves de API, senhas, tokens ou segredos no GitHub.
+---
 
-### 4.6. Aplicar migrações
+# 6. Banco de dados local e produção
+
+Em produção, a aplicação utiliza o PostgreSQL do **Neon**.
+
+O Django recebe as informações de conexão por variáveis de ambiente.
+
+No desenvolvimento local, a configuração pode utilizar o banco definido em `settings.py`.
+
+Para aplicar as migrações:
 
 ```bash
 python manage.py migrate
 ```
 
-O comando aplica as migrações disponíveis ao banco de dados configurado.
-
-### 4.7. Criar um administrador
-
-Opcionalmente:
+Para criar um administrador:
 
 ```bash
 python manage.py createsuperuser
 ```
 
-Esse usuário permite acessar o painel administrativo do Django, conforme as permissões configuradas.
+---
 
-### 4.8. Executar localmente
+# 7. Executar localmente
+
+Com o ambiente virtual ativado:
 
 ```bash
 python manage.py runserver
 ```
 
-Acesse:
+A aplicação ficará disponível em:
 
+```text
 http://127.0.0.1:8000/
-
-A rota inicial depende da configuração de URLs e poderá redirecionar para a tela de autenticação.
-
----
-
-## 5. Configuração das integrações externas
-
-### 5.1. HG Brasil Finance
-
-O projeto contempla uma integração para obtenção de informações financeiras e cotações.
-
-Caso o serviço esteja habilitado no ambiente atual, configure a variável esperada pelo código, documentada anteriormente como:
-
-```env
-HGBRASIL_API_KEY=sua_chave_aqui
 ```
 
-A ausência da chave ou a indisponibilidade do serviço pode impedir a exibição das informações externas, sem necessariamente impedir o uso das demais funcionalidades financeiras.
+---
 
-Consulte a documentação oficial para obter credenciais e condições atualizadas:
+# 8. GitHub, Render e Neon
 
-https://hgbrasil.com/
+O ambiente atual do FinanceEasy utiliza três serviços principais.
 
-### 5.2. Hugging Face Inference API
+### GitHub
 
-A integração com a Hugging Face foi prevista para auxiliar na categorização de despesas.
+Responsável pelo:
 
-Variável documentada anteriormente:
+- Código-fonte.
+- Histórico de alterações.
+- Commits.
+- Controle de versões.
+- Compartilhamento do projeto com colaboradores.
 
-```env
-HUGGINGFACE_API_TOKEN=seu_token_aqui
+Repositório:
+
+https://github.com/guilhermefs02-ux/FinanceEasy
+
+### Render
+
+Responsável pela:
+
+- Hospedagem da aplicação.
+- Execução do Django.
+- Deploy das alterações enviadas ao GitHub.
+- Disponibilização da aplicação na internet.
+
+### Neon
+
+Responsável pelo:
+
+- Banco de dados PostgreSQL.
+- Armazenamento persistente dos usuários.
+- Receitas.
+- Despesas.
+- Contas recorrentes.
+- Pagamentos.
+- Dívidas.
+- Parcelas.
+- Categorias.
+- Orçamentos.
+- Objetivos.
+- Contribuições.
+- Retiradas.
+- Demais dados persistentes da aplicação.
+
+### Fluxo de atualização
+
+O fluxo utilizado atualmente é:
+
+```text
+Alteração no código
+       ↓
+GitHub
+       ↓
+Commit
+       ↓
+Render
+       ↓
+Deploy
+       ↓
+FinanceEasy atualizado
+       ↓
+Neon PostgreSQL
 ```
 
-A variável e o nome do modelo efetivamente utilizado devem ser conferidos no código atual antes de configurar o ambiente.
+Uma alteração no código não apaga automaticamente os dados existentes no Neon.
 
-Documentação oficial:
-
-https://huggingface.co/docs
-
-A categorização por regras locais pode continuar disponível independentemente da integração externa, desde que esteja implementada e habilitada na versão utilizada.
+Da mesma forma, uma alteração de HTML/CSS não deve exigir alteração do banco de dados.
 
 ---
 
-## 6. Hospedagem e deploy
+# 9. Deploy no Render
 
-O código-fonte do FinanceEasy é mantido no GitHub e a aplicação está hospedada no Render.
+Quando uma alteração estiver pronta:
 
-O fluxo de publicação utilizado no projeto é:
+1. Salvar os arquivos.
+2. Enviar a alteração para o GitHub.
+3. Confirmar o commit.
+4. Aguardar o Render iniciar o deploy.
+5. Verificar os logs do deploy.
+6. Confirmar que o serviço iniciou corretamente.
+7. Testar a funcionalidade alterada.
 
-1. Editar os arquivos no GitHub.
-2. Confirmar as alterações por meio de um commit na branch `main`.
-3. Aguardar o processo de deploy automático do Render, quando habilitado.
-4. Verificar se o deploy foi concluído com sucesso.
-5. Abrir a aplicação publicada e testar a funcionalidade alterada.
+### Atenção
 
-### Cuidados importantes
+Não é recomendado alterar variáveis de ambiente ou configurações do banco de produção sem verificar primeiro a configuração atual do Render.
 
-- Um commit não garante, sozinho, que o deploy foi concluído.
-- Verifique o status do serviço no Render antes de testar uma alteração.
-- Não remova variáveis de ambiente já utilizadas pela aplicação.
-- Confirme a configuração do banco de dados de produção antes de executar migrações ou alterar configurações.
-- Não utilize dados reais de clientes ou informações financeiras sensíveis em testes desnecessários.
-- Não compartilhe o conteúdo de arquivos `.env` com credenciais.
+Não publicar:
 
-O endereço público da aplicação e o banco de dados de produção devem ser consultados nas configurações atuais do projeto.
+- Senhas.
+- Tokens.
+- Chaves de API.
+- `DATABASE_URL`.
+- Credenciais do Neon.
+- Informações privadas de usuários.
 
 ---
 
-## 7. Varredura de vencimentos
+# 10. Varredura de vencimentos
 
-O projeto possui um comando de gerenciamento associado à varredura de vencimentos:
+O projeto possui o comando:
 
 ```bash
 python manage.py varredura_vencimentos
 ```
 
-A implementação documentada contempla a identificação de vencimentos e avisos preventivos.
+A rotina está relacionada à identificação de vencimentos e à geração/atualização dos avisos financeiros.
 
-A execução automática em horário específico depende do mecanismo de agendamento configurado no ambiente.
+Arquivo:
 
-Em um computador local, é possível utilizar o Agendador de Tarefas do Windows ou o cron em Linux/macOS.
+```text
+core/management/commands/varredura_vencimentos.py
+```
 
-Em uma hospedagem como o Render, a execução periódica exige um agendador ou serviço compatível devidamente configurado. Não se deve presumir que o comando seja executado diariamente apenas por existir no código.
+Serviço relacionado:
 
-Antes de criar um agendamento, confira se o comando continua presente e se a aplicação não possui outro mecanismo de execução automática para evitar duplicidade.
+```text
+core/services/due_date_scan.py
+```
+
+A execução automática depende do mecanismo de agendamento configurado no ambiente de produção.
 
 ---
 
-## 8. Testes e validação
+# 11. Testes
 
-O repositório contém ou documenta um script de teste de fumaça:
+O projeto possui um teste de fumaça:
 
 ```bash
 python smoke_test.py
 ```
 
-O teste de fumaça tem como objetivo verificar fluxos essenciais da aplicação sem exigir navegação manual em todas as telas.
-
-A cobertura descrita anteriormente inclui operações de usuário, receitas, despesas, categorias, importações, dívidas, metas, filtros e vencimentos.
-
-A cobertura real deve ser confirmada no conteúdo atual do script.
-
-Após alterações relevantes, recomenda-se executar também:
+Também é possível verificar a configuração do Django com:
 
 ```bash
 python manage.py check
 ```
 
-Esse comando verifica problemas comuns na configuração do Django.
+Após alterações importantes, recomenda-se testar principalmente:
 
-Para validar uma alteração publicada, confira:
-
-- Se a página abre sem erro.
-- Se o usuário autenticado visualiza apenas seus próprios dados.
-- Se os formulários continuam enviando os dados corretamente.
-- Se pagamentos e despesas permanecem coerentes.
-- Se os indicadores financeiros apresentam valores compatíveis com os registros.
-- Se as telas funcionam em computadores e dispositivos móveis.
-- Se o deploy do Render terminou sem erros.
-
-A existência de um script de teste não significa que todos os cenários estejam cobertos ou que todos tenham passado na versão publicada.
-
----
-
-## 9. Regras de manutenção do projeto
-
-As próximas alterações devem respeitar as seguintes prioridades:
-
-1. **Preservar os dados financeiros:** evitar exclusões ou duplicações acidentais de receitas, despesas, pagamentos e parcelas.
-2. **Manter o isolamento por usuário:** não permitir acesso aos dados de outra conta.
-3. **Preservar a Sobra Segura:** mudanças visuais na Central de Avisos não devem remover os dados ou cálculos utilizados pelo indicador.
-4. **Preservar a navegação:** a Central de Avisos deve continuar acessível pela navegação e o contador deve continuar respeitando a lógica implementada.
-5. **Manter a coerência dos pagamentos:** marcar uma conta como paga deve respeitar o fluxo existente e atualizar os registros relacionados corretamente.
-6. **Preservar as metas:** mudanças no painel não devem eliminar o progresso ou o histórico dos objetivos.
-7. **Respeitar o modo de privacidade:** novos componentes financeiros devem considerar a ocultação dos valores.
-8. **Priorizar responsividade:** manter os principais fluxos utilizáveis em telas pequenas.
-9. **Evitar alterações desnecessárias:** modificar somente os arquivos relacionados ao objetivo solicitado.
-10. **Validar cada publicação:** testar as funcionalidades relacionadas após o deploy.
+- Login.
+- Cadastro.
+- Receitas.
+- Despesas.
+- Categorias.
+- Contas recorrentes.
+- Marcação de contas como pagas.
+- Dívidas.
+- Parcelas.
+- Importação de extratos.
+- Conciliação.
+- Objetivos.
+- Contribuições.
+- Retiradas.
+- Central de Avisos.
+- Sobra Segura.
+- Modo de privacidade.
+- Deploy no Render.
+- Persistência dos dados no Neon.
 
 ---
 
-## 10. Decisões de escopo
+# 12. Integração HG Brasil
 
-- A funcionalidade de dicas de consumo sem julgamento, identificada anteriormente como UC13, foi retirada do escopo original.
-- A priorização do MVP considera dívidas, prevenção de atrasos, alertas de limites e privacidade como elementos importantes para a persona do projeto.
-- O requisito original identificado como RF17 apresentava texto semelhante ao RF16, situação anteriormente sinalizada como possível erro de cópia.
-- As funcionalidades descritas neste documento devem ser confrontadas com o código atual antes de serem consideradas integralmente concluídas.
+O projeto possui um serviço relacionado à integração com a HG Brasil:
 
----
+```text
+dashboard/services/hgbrasil.py
+```
 
-## 11. Melhorias futuras
+Essa integração é utilizada para informações financeiras exibidas no sistema.
 
-Os itens abaixo são possibilidades de evolução, não declarações de que estejam necessariamente pendentes ou ausentes na versão atual:
+A configuração depende das variáveis de ambiente utilizadas pelo código.
 
-- Melhorar a robustez da leitura de PDFs de diferentes instituições financeiras.
-- Ampliar a cobertura dos testes automatizados.
-- Aprimorar os indicadores e a visualização do progresso financeiro.
-- Melhorar os fluxos de revisão e categorização de transações.
-- Revisar as mensagens de sucesso, erro e confirmação nas operações financeiras.
-- Aprimorar a experiência em dispositivos móveis.
-- Revisar a estratégia de agendamento e monitoramento dos vencimentos em produção.
-- Avaliar novas integrações externas conforme a necessidade do projeto.
-- Revisar periodicamente a segurança, as permissões e o tratamento de dados financeiros.
+A ausência ou indisponibilidade do serviço externo não deve comprometer as funcionalidades financeiras principais do FinanceEasy.
 
 ---
 
-## 12. Documentação e referências
+# 13. Segurança e preservação dos dados
 
-- **Repositório:** https://github.com/guilhermefs02-ux/FinanceEasy
-- **Django:** https://docs.djangoproject.com/
-- **Python:** https://docs.python.org/3/
-- **Bootstrap:** https://getbootstrap.com/docs/5.3/
-- **Render:** https://render.com/docs
-- **HG Brasil:** https://hgbrasil.com/
-- **Hugging Face:** https://huggingface.co/docs
+O FinanceEasy trabalha com informações financeiras pessoais.
+
+Por isso:
+
+- Cada usuário deve visualizar somente seus próprios dados.
+- Consultas devem respeitar o usuário autenticado.
+- Dados financeiros não devem ser expostos em URLs desnecessariamente.
+- Informações sensíveis não devem ser registradas em logs.
+- Credenciais devem permanecer em variáveis de ambiente.
+- O `.env` não deve ser enviado ao GitHub.
+- O banco Neon não deve ser apagado para corrigir problemas de código.
+- Migrações devem ser utilizadas para alterações estruturais.
+- Alterações no código devem ser testadas antes do deploy.
 
 ---
 
-## 13. Objetivo do FinanceEasy
+# 14. Regras de manutenção
 
-O FinanceEasy busca ajudar o usuário a compreender sua situação financeira de maneira clara e prática.
+Ao realizar novas alterações no FinanceEasy:
 
-Mais do que registrar entradas e saídas, o projeto pretende facilitar o acompanhamento dos compromissos, a prevenção de atrasos, a organização de dívidas e a construção gradual de reservas financeiras.
+1. **Preservar os dados existentes.**
+2. **Não apagar registros do Neon sem uma solicitação explícita.**
+3. **Manter o isolamento dos dados por usuário.**
+4. **Não quebrar funcionalidades já existentes para corrigir outra.**
+5. **Evitar alterações desnecessárias em arquivos não relacionados.**
+6. **Manter a responsividade.**
+7. **Manter o modo de privacidade.**
+8. **Preservar o cálculo da Sobra Segura.**
+9. **Preservar o histórico dos objetivos.**
+10. **Preservar os pagamentos de contas e parcelas.**
+11. **Utilizar migrações quando houver alteração no modelo do banco.**
+12. **Testar localmente quando possível.**
+13. **Depois do commit, verificar o deploy no Render.**
+14. **Depois do deploy, testar a funcionalidade diretamente na aplicação.**
 
-A evolução do sistema deve priorizar **confiabilidade dos dados, clareza dos indicadores, segurança e facilidade de uso**, preservando as funcionalidades já consolidadas a cada nova atualização.
+---
+
+# 15. Decisões de escopo
+
+A funcionalidade de dicas de consumo sem julgamento, anteriormente identificada como **UC13**, foi retirada do escopo.
+
+O MVP prioriza:
+
+- Organização financeira.
+- Prevenção de atrasos.
+- Contas recorrentes.
+- Dívidas.
+- Parcelas.
+- Alertas.
+- Orçamentos.
+- Sobra Segura.
+- Objetivos financeiros.
+- Reserva financeira.
+- Importação de extratos.
+- Conciliação.
+- Privacidade.
+
+Esses recursos representam o núcleo da proposta do FinanceEasy para a persona **“Equilibrista Sobrecarregado”**.
+
+---
+
+# 16. Possíveis melhorias futuras
+
+As próximas evoluções podem incluir:
+
+- Melhorias na categorização automática de despesas.
+- Evolução do mecanismo de reconhecimento de estabelecimentos.
+- Melhorias no parser de PDF para diferentes bancos.
+- Mais formatos de importação.
+- Melhorias nos relatórios financeiros.
+- Mais indicadores no painel.
+- Melhorias na visualização dos objetivos.
+- Melhorias na Central de Avisos.
+- Melhorias na experiência mobile.
+- Autenticação social.
+- Envio real de e-mails para recuperação de senha.
+- Monitoramento mais completo do deploy.
+- Ampliação dos testes automatizados.
+- Novas integrações externas, desde que não sejam obrigatórias para o funcionamento básico.
+
+---
+
+# 17. Princípio de evolução do projeto
+
+O FinanceEasy deve evoluir de maneira incremental.
+
+Cada nova funcionalidade deve ser implementada preservando as funcionalidades já existentes e, principalmente, os dados financeiros armazenados.
+
+O princípio central do projeto é:
+
+> **Organizar o dinheiro antes que ele vire um problema.**
+
+O sistema deve ajudar o usuário a saber:
+
+- Quanto recebeu.
+- Quanto gastou.
+- O que precisa pagar.
+- O que está atrasado.
+- Quanto ainda pode gastar.
+- Quanto está acumulando.
+- Quais objetivos está alcançando.
+
+O objetivo final é transformar informações financeiras dispersas em uma visão simples, clara e prática da situação financeira do usuário.
