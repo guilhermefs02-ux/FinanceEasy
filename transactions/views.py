@@ -464,7 +464,10 @@ def importar_extrato(request):
         if eh_fatura_cartao:
             # Fatura: categoria fixa, sem sugestão automática.
             categoria = categoria_fatura
-            confianca_categoria = None
+
+            # O banco de produção exige um valor não nulo
+            # neste campo. "alta" é uma opção válida do modelo.
+            confianca_categoria = "alta"
         else:
             # Conta corrente: mantém a categorização atual.
             chave_sugestao = (
