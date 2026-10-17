@@ -182,41 +182,6 @@ class ImportUploadForm(forms.Form):
         initial=ImportBatch.TipoConta.CORRENTE,
         label="O que você está importando?",
     )
-    cartao_divida = forms.ModelChoiceField(
-        queryset=None,
-        required=False,
-        label="Qual cartão/fatura?",
-        widget=forms.Select(attrs={"class": "form-select"}),
-    )
-
-    def __init__(self, *args, user=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        from debts.models import Debt
-
-        if user is not None:
-            self.fields["cartao_divida"].queryset = Debt.objects.filter(
-                usuario=user,
-                categoria_passivo=Debt.CategoriaPassivo.CARTAO_CREDITO,
-                quitada=False,
-            )
-
-    def clean(self):
-        cleaned = super().clean()
-
-        if (
-            cleaned.get("tipo_conta")
-            == ImportBatch.TipoConta.FATURA_CARTAO
-            and not cleaned.get("cartao_divida")
-        ):
-            self.add_error(
-                "cartao_divida",
-                (
-                    "Selecione a qual cartão esta fatura pertence "
-                    "(cadastre o cartão em Dívidas, se ainda não existir)."
-                ),
-            )
-
-        return cleaned
 
 
 class RecurringBillForm(forms.ModelForm):
