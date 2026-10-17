@@ -252,18 +252,28 @@ def importar_extrato(request):
     """
     UC04 — Importar extrato bancário e fatura.
 
+    Conta corrente:
+    - Mantém a categorização atual e a tela de conciliação.
+    - Mantém a detecção de duplicidades por hash.
+
+    Fatura de cartão:
+    - Registra todas as linhas como despesas.
+    - Usa a categoria "Despesas do cartão".
+    - Confirma as despesas automaticamente.
+    - Encaminha diretamente para o extrato, sem conciliação.
+    - Não exige cartão cadastrado nem vínculo com uma dívida.
+
     Otimizações:
     - Calcula os hashes antes de consultar o banco.
-    - Consulta duplicatas em blocos, em vez de fazer uma consulta
-      individual para cada lançamento.
-    - Identifica duplicatas existentes e repetidas no mesmo arquivo.
+    - Consulta duplicatas em blocos.
+    - Identifica duplicatas existentes e repetidas no arquivo.
     - Carrega as categorias uma única vez.
     - Reutiliza sugestões para descrições iguais no mesmo arquivo.
     - Grava as novas transações em lote e dentro de uma transação
       atômica para evitar importações parcialmente gravadas.
     """
     if request.method != "POST":
-        form = ImportUploadForm(user=request.user)
+        form = ImportUploadForm()
         return render(
             request,
             "transactions/importar_extrato.html",
@@ -273,7 +283,6 @@ def importar_extrato(request):
     form = ImportUploadForm(
         request.POST,
         request.FILES,
-        user=request.user,
     )
 
     if not form.is_valid():
@@ -308,7 +317,9 @@ def importar_extrato(request):
         )
 
     tipo_conta = form.cleaned_data["tipo_conta"]
-    cartao_divida = form.cleaned_data.get("cartao_divida")
+    eh_fatura_cartao = (
+        tipo_conta == ImportBatch.TipoConta.FATURA_CARTAO
+    )
     formato = formato_por_extensao(arquivo.name)
 
     if not formato:
@@ -336,17 +347,46 @@ def importar_extrato(request):
             {"form": form},
         )
 
+    # Para faturas, garante uma categoria de despesa própria
+    # ou reutiliza uma categoria global já existente.
+    categoria_fatura = None
+
+    if eh_fatura_cartao:
+        categoria_fatura = (
+            Category.objects.para_usuario(
+                request.user,
+                Category.Tipo.DESPESA,
+            )
+            .filter(nome__iexact="Despesas do cartão")
+            .first()
+        )
+
+        if categoria_fatura is None:
+            categoria_fatura = Category.objects.create(
+                nome="Despesas do cartão",
+                tipo=Category.Tipo.DESPESA,
+                usuario=request.user,
+                is_padrao=False,
+                icone="bi-credit-card",
+            )
+
     linhas_preparadas = []
     hashes_unicos = set()
 
     for linha in linhas:
         valor = linha["valor"]
 
-        tipo = (
-            Transaction.Tipo.RECEITA
-            if valor >= 0
-            else Transaction.Tipo.DESPESA
-        )
+        if eh_fatura_cartao:
+            # Fatura de cartão: todas as linhas são despesas,
+            # inclusive valores positivos, como possíveis estornos.
+            tipo = Transaction.Tipo.DESPESA
+        else:
+            # Conta corrente: mantém a regra atual.
+            tipo = (
+                Transaction.Tipo.RECEITA
+                if valor >= 0
+                else Transaction.Tipo.DESPESA
+            )
 
         valor_abs = abs(valor)
         descricao_banco = linha["descricao"]
@@ -421,35 +461,43 @@ def importar_extrato(request):
         tipo = linha["tipo"]
         descricao_banco = linha["descricao"]
 
-        chave_sugestao = (
-            tipo,
-            descricao_banco.strip().casefold(),
-        )
-
-        if chave_sugestao not in sugestoes_por_descricao:
-            sugestoes_por_descricao[chave_sugestao] = (
-                sugerir_categoria(
-                    descricao_banco,
-                    tipo,
-                )
-            )
-
-        sugestao = sugestoes_por_descricao[chave_sugestao]
-
-        categoria = categorias_por_nome.get(
-            (
+        if eh_fatura_cartao:
+            # Fatura: categoria fixa, sem sugestão automática.
+            categoria = categoria_fatura
+            confianca_categoria = None
+        else:
+            # Conta corrente: mantém a categorização atual.
+            chave_sugestao = (
                 tipo,
-                sugestao.nome_categoria.casefold(),
+                descricao_banco.strip().casefold(),
             )
-        )
 
-        if categoria is None:
+            if chave_sugestao not in sugestoes_por_descricao:
+                sugestoes_por_descricao[chave_sugestao] = (
+                    sugerir_categoria(
+                        descricao_banco,
+                        tipo,
+                    )
+                )
+
+            sugestao = sugestoes_por_descricao[chave_sugestao]
+
             categoria = categorias_por_nome.get(
                 (
                     tipo,
-                    "Outros",
+                    sugestao.nome_categoria.casefold(),
                 )
             )
+
+            if categoria is None:
+                categoria = categorias_por_nome.get(
+                    (
+                        tipo,
+                        "Outros",
+                    )
+                )
+
+            confianca_categoria = sugestao.confianca
 
         transacoes_novas.append(
             Transaction(
@@ -460,15 +508,20 @@ def importar_extrato(request):
                 categoria=categoria,
                 descricao=descricao_banco,
                 descricao_origem_banco=descricao_banco,
-                origem=Transaction.Origem.IMPORTADO,
-                status=Transaction.Status.PENDENTE,
-                categoria_sugerida_confianca=sugestao.confianca,
-                hash_dedup=hash_dedup,
-                debito_fatura_cartao=(
-                    cartao_divida
-                    if tipo_conta == ImportBatch.TipoConta.FATURA_CARTAO
-                    else None
+                forma_pagamento=(
+                    Transaction.FormaPagamento.CREDITO
+                    if eh_fatura_cartao
+                    else ""
                 ),
+                origem=Transaction.Origem.IMPORTADO,
+                status=(
+                    Transaction.Status.CONFIRMADA
+                    if eh_fatura_cartao
+                    else Transaction.Status.PENDENTE
+                ),
+                categoria_sugerida_confianca=confianca_categoria,
+                hash_dedup=hash_dedup,
+                debito_fatura_cartao=None,
             )
         )
 
@@ -478,7 +531,7 @@ def importar_extrato(request):
             arquivo_nome=arquivo.name,
             formato=formato,
             tipo_conta=tipo_conta,
-            cartao_divida=cartao_divida,
+            cartao_divida=None,
             total_linhas=len(linhas),
         )
 
@@ -493,7 +546,9 @@ def importar_extrato(request):
 
         batch.total_novas = len(transacoes_novas)
         batch.total_duplicadas = duplicadas
-        batch.concluido = not transacoes_novas
+        batch.concluido = (
+            not transacoes_novas or eh_fatura_cartao
+        )
 
         batch.save(
             update_fields=[
@@ -506,10 +561,27 @@ def importar_extrato(request):
     if not transacoes_novas:
         messages.info(
             request,
-            "Todas as transações deste extrato já foram "
-            "importadas anteriormente. Nenhum novo gasto "
+            "Todas as transações deste arquivo já foram "
+            "importadas anteriormente. Nenhum novo lançamento "
             "foi adicionado.",
         )
+
+        return redirect("transactions:extrato")
+
+    if eh_fatura_cartao:
+        messages.success(
+            request,
+            f"{len(transacoes_novas)} despesa(s) da fatura "
+            "foram importadas diretamente para o extrato, "
+            "na categoria 'Despesas do cartão'."
+        )
+
+        if duplicadas:
+            messages.info(
+                request,
+                f"{duplicadas} lançamento(s) duplicado(s) "
+                "foram ignorados."
+            )
 
         return redirect("transactions:extrato")
 
