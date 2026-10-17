@@ -1,44 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Importar extrato — FinanceEasy{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-7">
-    <h1 class="h5 fw-bold mb-1"><i class="bi bi-cloud-upload text-primary me-1"></i>Importar extrato bancário</h1>
+    <h1 class="h5 fw-bold mb-1">
+      <i class="bi bi-cloud-upload text-primary me-1"></i>
+      Importar extrato bancário
+    </h1>
+
     <p class="text-muted small mb-3">
-      Chega de digitar cada gasto: envie o extrato do seu banco (.ofx, .csv ou .pdf)
-      e a gente organiza tudo para você conferir em segundos.
+      Envie o extrato da sua conta bancária ou a fatura do cartão
+      de crédito (.ofx, .csv ou .pdf) para importar seus lançamentos.
     </p>
+
     <div class="fe-card">
       <form method="post" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
 
         <div class="mb-3">
-          <label class="form-label fw-semibold">{{ form.tipo_conta.label }}</label>
+          <label class="form-label fw-semibold">
+            {{ form.tipo_conta.label }}
+          </label>
           {{ form.tipo_conta }}
-        </div>
-
-        <div class="mb-3">
-          {{ form.cartao_divida.label_tag }}
-          {{ form.cartao_divida }}
-          {% for erro in form.cartao_divida.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
-          <div class="form-text">Só é necessário se você marcou "Fatura de cartão de crédito" acima.</div>
+          {% for erro in form.tipo_conta.errors %}
+            <div class="text-danger small mt-1">{{ erro }}</div>
+          {% endfor %}
         </div>
 
         <div class="mb-3">
           {{ form.arquivo.label_tag }}
           {{ form.arquivo }}
-          {% for erro in form.arquivo.errors %}<div class="text-danger small mt-1">{{ erro }}</div>{% endfor %}
+          {% for erro in form.arquivo.errors %}
+            <div class="text-danger small mt-1">{{ erro }}</div>
+          {% endfor %}
         </div>
 
-        <button type="submit" class="btn fe-btn-primary w-100 py-2">Importar</button>
+        <button type="submit" class="btn fe-btn-primary w-100 py-2">
+          Importar
+        </button>
       </form>
     </div>
 
     <div class="fe-card mt-3">
       <p class="small text-muted mb-0">
         <i class="bi bi-shield-lock me-1"></i>
-        Detectamos e ignoramos automaticamente transações já importadas antes,
-        para você nunca ter um gasto contado duas vezes.
+        Detectamos e ignoramos automaticamente transações já importadas,
+        evitando lançamentos duplicados.
       </p>
     </div>
   </div>
