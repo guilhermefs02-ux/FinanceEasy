@@ -263,18 +263,14 @@ def importar_extrato(request):
       atômica para evitar importações parcialmente gravadas.
     """
     if request.method != "POST":
-        form = ImportUploadForm(user=request.user)
+        form = ImportUploadForm()
         return render(
             request,
             "transactions/importar_extrato.html",
             {"form": form},
         )
 
-    form = ImportUploadForm(
-        request.POST,
-        request.FILES,
-        user=request.user,
-    )
+    form = ImportUploadForm(request.POST, request.FILES)
 
     if not form.is_valid():
         return render(
