@@ -494,6 +494,24 @@
     </div>
   </div>
 
+  <!-- Botão para importar extrato -->
+  <div class="mb-4">
+    <a href="{% url 'transactions:importar_extrato' %}"
+       class="d-flex align-items-center gap-3 p-3 rounded-3 text-white text-decoration-none"
+       style="background:#0d6efd; border:1px solid #0d6efd;"
+       title="Importar extrato bancário">
+      <span class="d-flex align-items-center justify-content-center rounded-3"
+            style="width:48px;height:48px;background:rgba(255,255,255,.18);font-size:1.5rem;">
+        <i class="bi bi-cloud-arrow-up"></i>
+      </span>
+      <span class="d-flex flex-column flex-grow-1">
+        <strong>Importar extrato</strong>
+        <small class="text-white-50">Importe um arquivo do seu banco para adicionar movimentações.</small>
+      </span>
+      <i class="bi bi-arrow-right fs-5"></i>
+    </a>
+  </div>
+
   <!-- Seleção de competência -->
   <section class="fe-competencia mb-4" aria-label="Competência do painel">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
