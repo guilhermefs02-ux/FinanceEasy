@@ -94,13 +94,15 @@
 
   <nav class="fe-sidebar-nav">
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'painel' %}active{% endif %}"
-       href="{% url 'dashboard:painel' %}">
+       href="{% url 'dashboard:painel' %}"
+       title="Veja um resumo das suas finanças, incluindo saldo, receitas e despesas.">
       <i class="bi bi-grid-1x2-fill"></i>
       <span>Painel</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'avisos' %}active{% endif %}"
-       href="{{ avisos_url }}">
+       href="{{ avisos_url }}"
+       title="Consulte alertas sobre vencimentos, movimentações e situações que precisam da sua atenção.">
       <i class="bi bi-exclamation-triangle-fill"></i>
       <span>Central de Avisos</span>
       {% if total_avisos %}
@@ -113,26 +115,30 @@
 
     {% if mercado_url %}
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'mercado' %}active{% endif %}"
-       href="{{ mercado_url }}">
+       href="{{ mercado_url }}"
+       title="Acompanhe informações e indicadores do mercado financeiro.">
       <i class="bi bi-graph-up-arrow"></i>
       <span>Mercado</span>
     </a>
     {% endif %}
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'extrato' %}active{% endif %}"
-       href="{% url 'transactions:extrato' %}">
+       href="{% url 'transactions:extrato' %}"
+       title="Consulte e filtre o histórico de todas as suas entradas e saídas.">
       <i class="bi bi-receipt"></i>
       <span>Extrato</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.namespace == 'debts' %}active{% endif %}"
-       href="{% url 'debts:lista' %}">
+       href="{% url 'debts:lista' %}"
+       title="Cadastre e acompanhe suas dívidas, parcelas e pagamentos pendentes.">
       <i class="bi bi-credit-card-2-front"></i>
       <span>Dívidas</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.namespace == 'goals' %}active{% endif %}"
-       href="{% url 'goals:lista' %}">
+       href="{% url 'goals:lista' %}"
+       title="Crie objetivos financeiros e acompanhe quanto falta para alcançá-los.">
       <i class="bi bi-bullseye"></i>
       <span>Objetivos</span>
     </a>
@@ -142,31 +148,36 @@
 
   <nav class="fe-sidebar-nav">
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'assinaturas' %}active{% endif %}"
-       href="{% url 'transactions:assinaturas' %}">
+       href="{% url 'transactions:assinaturas' %}"
+       title="Organize gastos recorrentes, como contas mensais, assinaturas e serviços.">
       <i class="bi bi-arrow-repeat"></i>
       <span>Despesas fixas</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'futuros' %}active{% endif %}"
-       href="{% url 'transactions:futuros' %}">
+       href="{% url 'transactions:futuros' %}"
+       title="Visualize e organize receitas e despesas programadas para datas futuras.">
       <i class="bi bi-calendar2-week"></i>
       <span>Lançamentos futuros</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'comparativo_mensal' %}active{% endif %}"
-       href="{% url 'transactions:comparativo_mensal' %}">
+       href="{% url 'transactions:comparativo_mensal' %}"
+       title="Visualize gráficos e compare a evolução das suas receitas e despesas.">
       <i class="bi bi-bar-chart-line"></i>
       <span>Gráficos</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'categorias' %}active{% endif %}"
-       href="{% url 'transactions:categorias' %}">
+       href="{% url 'transactions:categorias' %}"
+       title="Crie e organize as categorias usadas para classificar seus lançamentos.">
       <i class="bi bi-tags"></i>
       <span>Categorias</span>
     </a>
 
     <a class="fe-sidebar-link {% if request.resolver_match.url_name == 'orcamentos' %}active{% endif %}"
-       href="{% url 'transactions:orcamentos' %}">
+       href="{% url 'transactions:orcamentos' %}"
+       title="Defina tetos de gastos por categoria e acompanhe o quanto já foi utilizado.">
       <i class="bi bi-wallet2"></i>
       <span>Limites por categoria</span>
     </a>
